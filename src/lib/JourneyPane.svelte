@@ -20,18 +20,23 @@
     {:else}
       <span title="As scheduled - could change still">May change</span>
     {/if}
-
-    {#if journey.isCancelled}
-      <span title="Train has been cancelled">Cancelled</span>
-    {/if}
   </div>
 
-  <div>
+  <div class="updates">
     {#if isLastTrain}
-      Last train!
+      <span>Last train!</span>
     {/if}
+
     {#if journey.isPlatformChanged}
-      Platform has changed!
+      <span>Platform has changed</span>
+    {/if}
+
+    {#if journey.isCancelled}
+      <span title="{journey.cancelReasonShortText}">Cancelled</span>
+    {/if}
+
+    {#if journey.isDelayed}
+      <span>Delayed</span>
     {/if}
   </div>
 </li>
@@ -65,5 +70,14 @@
     text-decoration-style: dashed;
     text-decoration-line: underline;
     color: gray;
+  }
+
+  .updates span {
+    /* pill */
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    border: 0.25px solid gray;
+    font-size: 0.75rem;
   }
 </style>

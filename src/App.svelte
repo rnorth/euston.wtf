@@ -73,8 +73,8 @@
     <section>
       <h2>Departures to {selectedDestination}</h2>
       <ul>
-        {#each departures.journeys.slice(0, 5) as journey}
-          <JourneyPane {journey} />
+        {#each departures.journeys.slice(0, 5) as journey, i}
+          <JourneyPane {journey} isLastTrain={i == departures.journeys.length - 1}/>
         {/each}
 
         <!-- if more than five journeys also display the final item -->
