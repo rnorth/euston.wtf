@@ -3,6 +3,7 @@
   import AutoComplete from "simple-svelte-autocomplete";
   import type { Journey, Departures } from "./lib/departures";
   import JourneyPane from "./lib/JourneyPane.svelte";
+  import Title from "./lib/Title.svelte";
 
   const stations = [
     "Milton Keynes Central (MKC)",
@@ -55,7 +56,7 @@
 </script>
 
 <header>
-  <h1>euston.wtf</h1>
+  <Title/>
 </header>
 
 <main>
@@ -64,11 +65,7 @@
   </section>
 
   <section>
-    <label for="destination"
-      >Destination
-      <AutoComplete items={stations} bind:selectedItem={selectedDestination} />
-    </label>
-
+    <AutoComplete items={stations} bind:selectedItem={selectedDestination} placeholder="Trains to..." />
     <button>Get times</button>
   </section>
 
