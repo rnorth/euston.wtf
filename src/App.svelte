@@ -79,7 +79,7 @@
 
         <!-- if more than five journeys also display the final item -->
         {#if departures.journeys.length > 5}
-          <li aria-hidden="true">...</li>
+          <li class="elipsis" aria-hidden="true">...</li>
           <JourneyPane
             journey={departures.journeys[departures.journeys.length - 1]}
             isLastTrain={true}
@@ -89,3 +89,9 @@
     </section>
   {/if}
 </main>
+
+<style>
+  li.elipsis {
+    list-style-type: none;
+  }
+</style>
