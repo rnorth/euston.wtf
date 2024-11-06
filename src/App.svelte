@@ -1,9 +1,10 @@
 <script lang="ts">
   // @ts-ignore: no types are available?
   import AutoComplete from "simple-svelte-autocomplete";
-  import type { Journey, Departures } from "./lib/departures";
+  import { type Journey, type Departures, fetchDepartures, departures } from "./lib/departures";
   import JourneyPane from "./lib/JourneyPane.svelte";
   import Title from "./lib/Title.svelte";
+  import { onMount } from "svelte";
 
   const stations = [
     "Milton Keynes Central (MKC)",
@@ -15,43 +16,29 @@
     "Liverpool Lime Street (LIV)",
   ];
   let selectedDestination = "";
+  let destination = "";
 
-  let departures: Departures | null = null;
+  let nextRefresh = 0;
+  let now = new Date().getTime();
+
+  onMount(() => {
+    setInterval(() => {
+      now = new Date().getTime();
+    }, 1000);
+  });
 
   $: {
-    (async () => {
-      departures = null;
-      let match = selectedDestination.match(/\(([^)]+)\)/);
-      let destination = match ? match[1] : "";
+    let match = selectedDestination.match(/\(([^)]+)\)/);
+    destination = match ? match[1] : "";
+    nextRefresh = 0;
+  }
 
-      if (destination !== "") {
-        try {
-          const response = await fetch(
-            `https://rtt-journey-api.rnorth.workers.dev/journeys/EUS/${destination}`,
-            {
-              headers: {
-                Accept: "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error(
-              "Network response was not ok " + response.statusText
-            );
-          }
-
-          const data = await response.json();
-          console.log(data);
-          departures = data;
-        } catch (error) {
-          console.error(
-            "There has been a problem with your fetch operation:",
-            error
-          );
-        }
-      }
-    })();
+  $: {
+    if (destination !== "" && now > nextRefresh) {
+      fetchDepartures(destination).then(() => {
+        nextRefresh = now + 60000;
+      });
+    }
   }
 </script>
 
@@ -66,22 +53,21 @@
 
   <section>
     <AutoComplete items={stations} bind:selectedItem={selectedDestination} placeholder="Trains to..." />
-    <button>Get times</button>
   </section>
 
-  {#if departures}
+  {#if $departures}
     <section>
       <h2>Departures to {selectedDestination}</h2>
       <ul>
-        {#each departures.journeys.slice(0, 5) as journey, i}
-          <JourneyPane {journey} isLastTrain={i == departures.journeys.length - 1}/>
+        {#each $departures.journeys.slice(0, 5) as journey, i}
+          <JourneyPane {journey} isLastTrain={i == $departures.journeys.length - 1}/>
         {/each}
 
         <!-- if more than five journeys also display the final item -->
-        {#if departures.journeys.length > 5}
+        {#if $departures.journeys.length > 5}
           <li class="elipsis" aria-hidden="true">...</li>
           <JourneyPane
-            journey={departures.journeys[departures.journeys.length - 1]}
+            journey={$departures.journeys[$departures.journeys.length - 1]}
             isLastTrain={true}
           />
         {/if}
