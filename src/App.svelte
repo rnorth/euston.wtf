@@ -25,12 +25,30 @@
 
   let nextRefresh = 0;
   let now = new Date().getTime();
+  let isVisible = true;
 
   onMount(() => {
     setInterval(() => {
       now = new Date().getTime();
     }, 1000);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        console.log("hidden - suspending refresh");
+        isVisible = false;
+      } else {
+        console.log("visible - resuming refresh");
+        isVisible = true;
+        doRefresh();
+      }
+    });
   });
+
+  function doRefresh() {
+    fetchDepartures(destination).then(() => {
+      nextRefresh = now + 60000;
+    });
+  }
 
   $: {
     let match = selectedDestination.match(/\(([^)]+)\)/);
@@ -39,10 +57,8 @@
   }
 
   $: {
-    if (destination !== "" && now > nextRefresh) {
-      fetchDepartures(destination).then(() => {
-        nextRefresh = now + 60000;
-      });
+    if (destination !== "" && now > nextRefresh && isVisible) {
+      doRefresh();
     }
   }
 </script>
