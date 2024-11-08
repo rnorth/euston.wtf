@@ -1,7 +1,12 @@
 <script lang="ts">
   // @ts-ignore: no types are available?
   import AutoComplete from "simple-svelte-autocomplete";
-  import { type Journey, type Departures, fetchDepartures, departures } from "./lib/departures";
+  import {
+    type Journey,
+    type Departures,
+    fetchDepartures,
+    departures,
+  } from "./lib/departures";
   import JourneyPane from "./lib/JourneyPane.svelte";
   import Title from "./lib/Title.svelte";
   import { onMount } from "svelte";
@@ -42,39 +47,44 @@
   }
 </script>
 
-<header>
-  <Title/>
-</header>
-
-<main>
-  <section>
-    <p>No fuss platform and departure times for your journey from Euston</p>
-  </section>
-
-  <section>
-    <AutoComplete items={stations} bind:selectedItem={selectedDestination} placeholder="Trains to..." />
-  </section>
-
-  {#if $departures}
-    <section>
-      <h2>Departures to {selectedDestination}</h2>
-      <ul>
-        {#each $departures.journeys.slice(0, 5) as journey, i}
-          <JourneyPane {journey} isLastTrain={i == $departures.journeys.length - 1}/>
-        {/each}
-
-        <!-- if more than five journeys also display the final item -->
-        {#if $departures.journeys.length > 5}
-          <li class="elipsis" aria-hidden="true">...</li>
-          <JourneyPane
-            journey={$departures.journeys[$departures.journeys.length - 1]}
-            isLastTrain={true}
-          />
-        {/if}
-      </ul>
+<div class="container">
+  <main>
+    <section class="section">
+      <Title />
     </section>
-  {/if}
-</main>
+
+    <section class="section">
+      <AutoComplete
+        items={stations}
+        bind:selectedItem={selectedDestination}
+        placeholder="Trains to..."
+      />
+    </section>
+
+    {#if $departures}
+      <section class="section">
+        <h2>Departures to {selectedDestination}</h2>
+        <ul>
+          {#each $departures.journeys.slice(0, 5) as journey, i}
+            <JourneyPane
+              {journey}
+              isLastTrain={i == $departures.journeys.length - 1}
+            />
+          {/each}
+
+          <!-- if more than five journeys also display the final item -->
+          {#if $departures.journeys.length > 5}
+            <li class="elipsis" aria-hidden="true">...</li>
+            <JourneyPane
+              journey={$departures.journeys[$departures.journeys.length - 1]}
+              isLastTrain={true}
+            />
+          {/if}
+        </ul>
+      </section>
+    {/if}
+  </main>
+</div>
 
 <style>
   li.elipsis {

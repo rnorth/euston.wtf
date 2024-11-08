@@ -1,9 +1,14 @@
-<h1>euston.wtf</h1>
+<h1 class="title">euston.wtf</h1>
+<h2 class="subtitle">No fuss platform and departure times for your journey from Euston</h2>
 
 <style>
   h1 {
     font-size: 48pt;
     font-size: 8vw;
+    font-weight: 900;
+
+    text-align: center;
+
     background-image: linear-gradient(
       90deg,
       #d16ba5,
@@ -39,5 +44,9 @@
     100% {
       background-position: 0% 50%;
     }
+  }
+
+  h2 {
+    text-align: center;
   }
 </style>
