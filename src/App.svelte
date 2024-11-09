@@ -10,18 +10,10 @@
   import JourneyPane from "./lib/JourneyPane.svelte";
   import Title from "./lib/Title.svelte";
   import { onMount } from "svelte";
+  import {type Station, stations} from "./lib/stations";
 
-  const stations = [
-    "Milton Keynes Central (MKC)",
-    "Birmingham New Street (BHM)",
-    "Kings Langley (KGL)",
-    "Tring (TRI)",
-    "Coventry (COV)",
-    "Northampton (NMP)",
-    "Liverpool Lime Street (LIV)",
-  ];
-  let selectedDestination = "";
-  let destination = "";
+  let selectedDestination: Station | null = null;
+  let destinationCode = "";
 
   let nextRefresh = 0;
   let now = new Date().getTime();
@@ -39,26 +31,28 @@
       } else {
         console.log("visible - resuming refresh");
         isVisible = true;
-        doRefresh();
+        nextRefresh = 0;
       }
     });
   });
 
   function doRefresh() {
-    fetchDepartures(destination).then(() => {
+    fetchDepartures(destinationCode).then(() => {
       nextRefresh = now + 60000;
     });
   }
 
   $: {
-    let match = selectedDestination.match(/\(([^)]+)\)/);
-    destination = match ? match[1] : "";
-    nextRefresh = 0;
+    if (selectedDestination !== null && now > nextRefresh && isVisible) {
+      doRefresh();
+    }
   }
 
   $: {
-    if (destination !== "" && now > nextRefresh && isVisible) {
+    if (selectedDestination !== null) {
+      destinationCode = selectedDestination.code;
       doRefresh();
+      departures.set(null);
     }
   }
 </script>
@@ -72,6 +66,7 @@
     <section class="section">
       <AutoComplete
         items={stations}
+        labelFunction={(item) => item.station + " (" + item.code + ")"}
         bind:selectedItem={selectedDestination}
         placeholder="Trains to..."
       />
@@ -79,7 +74,16 @@
 
     {#if $departures}
       <section class="section">
-        <h2>Departures to {selectedDestination}</h2>
+        <h2>
+          Departures to {selectedDestination?.station} ({selectedDestination?.code})
+          <span>
+            {#if now > nextRefresh}
+              (Updating)
+            {:else}
+              (Updating in { Math.round((nextRefresh - now) / 1000) } seconds)
+            {/if}
+          </span>
+        </h2>
         <ul>
           {#each $departures.journeys.slice(0, 5) as journey, i}
             <JourneyPane
