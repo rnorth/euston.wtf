@@ -6,7 +6,14 @@
 </script>
 
 <li>
-  <div>{journey.departureTime}</div>
+  <div>
+    {#if journey.isDelayed}
+      <span>{journey.departureTime}</span>
+      <span class="strikethrough">{journey.scheduledDepartureTime}</span>
+    {:else}
+      {journey.departureTime}
+    {/if}
+  </div>
 
   <span class="platform">Platform</span>
 
@@ -36,7 +43,7 @@
     {/if}
 
     {#if journey.isDelayed}
-      <span>Delayed</span>
+      <span>Delayed by {journey.delayInMinutes} mins</span>
     {/if}
   </div>
 </li>
@@ -79,5 +86,9 @@
     border-radius: 1rem;
     border: 0.25px solid gray;
     font-size: 0.75rem;
+  }
+
+  .strikethrough {
+    text-decoration: line-through;
   }
 </style>
