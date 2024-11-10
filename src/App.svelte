@@ -13,7 +13,7 @@
     let now = new Date().getTime();
     let isVisible = true;
 
-    onMount(() => {
+    function reactToUrlChange() {
         if (window.location.pathname.length > 1) {
             // path part of the URL is the destination code, if set
             const code = window.location.pathname.slice(1);
@@ -31,6 +31,17 @@
                 doRefresh();
             }
         }
+    }
+
+    onMount(() => {
+        reactToUrlChange();
+
+        window.addEventListener("popstate", (event) => {
+            console.log(
+                `location: ${document.location}, state: ${JSON.stringify(event.state)}`,
+            )
+            reactToUrlChange();
+        });
 
         setInterval(() => {
             now = new Date().getTime();
