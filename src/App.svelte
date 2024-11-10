@@ -152,7 +152,7 @@
     <footer class="footer mt-6">
         <div class="content has-text-centered">
             <p>
-                <strong>Pro tip:</strong> Bookmark this page
+                <strong>Tip:</strong> Bookmark this page
                 to quickly check departures to your destination in future.
             </p>
             <p>
