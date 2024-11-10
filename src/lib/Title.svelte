@@ -1,5 +1,5 @@
 <h1 class="title">euston.wtf</h1>
-<h2 class="subtitle">No fuss platform and departure times for your journey from Euston</h2>
+<h2 class="subtitle">No-fuss platform and departure times for your journey from Euston</h2>
 
 <style>
   h1 {
