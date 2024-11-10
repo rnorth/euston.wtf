@@ -59,7 +59,7 @@
 
 <div class="container">
   <main>
-    <section class="section">
+    <section>
       <Title />
     </section>
 
@@ -104,6 +104,20 @@
       </section>
     {/if}
   </main>
+
+  <footer class="footer mt-6">
+    <div class="content has-text-centered">
+      <p>
+        <strong>euston.wtf</strong> is a just-for-fun side project.
+        Powered by the <a href="https://www.realtimetrains.co.uk">Realtime Trains</a> API.
+      </p>
+      <p>Contact <a href="mailto:admin@euston.wtf">admin@euston.wtf</a> with any enquiries.</p>
+      <p>
+        Always follow official sources for travel information. No guarantees are made about the accuracy of the
+        information presented on this site.
+      </p>
+    </div>
+  </footer>
 </div>
 
 <style>
