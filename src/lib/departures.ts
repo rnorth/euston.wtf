@@ -65,7 +65,7 @@ export async function fetchDepartures(destination: string) {
     if (destination !== "") {
         try {
             const response = await fetch(
-                `https://rtt-journey-api.rnorth.workers.dev/journeys/EUS/${destination}`,
+                `https://api.euston.wtf/journeys/EUS/${destination}`,
                 {
                     headers: {
                         Accept: "application/json",
