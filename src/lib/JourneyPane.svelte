@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type Journey from "./departures";
+  import type {Journey} from "./departures";
 
   export let journey: Journey;
   export let isLastTrain: boolean = false;

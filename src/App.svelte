@@ -20,6 +20,16 @@
   let isVisible = true;
 
   onMount(() => {
+    // hash part of the URL is the destination code, if set
+    if (window.location.hash) {
+        const code = window.location.hash.slice(1);
+        const station = stations.find((s) => s.code === code);
+        if (station) {
+            selectedDestination = station;
+            doRefresh();
+        }
+    }
+
     setInterval(() => {
       now = new Date().getTime();
     }, 1000);
@@ -53,6 +63,7 @@
       destinationCode = selectedDestination.code;
       doRefresh();
       departures.set(null);
+      window.location.hash = selectedDestination.code;
     }
   }
 </script>
