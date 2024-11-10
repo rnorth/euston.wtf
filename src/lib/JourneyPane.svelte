@@ -7,6 +7,10 @@
     function rowClass() {
         return journey.isCancelled ? "is-danger" : journey.isDelayed ? "is-warning" : "";
     }
+
+    function titlecase(str: string) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
 </script>
 
 <article class="message {rowClass()}">
@@ -45,6 +49,10 @@
 
             {#if journey.isDelayed}
                 <span class="tag is-warning">Delayed</span>
+            {/if}
+
+            {#if journey.serviceType !== "train"}
+                <span class="tag is-danger">{titlecase(journey.serviceType)}</span>
             {/if}
         </div>
     </div>
