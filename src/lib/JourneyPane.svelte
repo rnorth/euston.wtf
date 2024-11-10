@@ -62,8 +62,8 @@
     /* li displays as a box with rounded borders all round */
     .message-body {
         display: grid;
-        grid-template-columns: 1fr 4fr 2fr;
-        gap: 0;
+        grid-template-columns: 1fr 3fr 2fr;
+        gap: 0.5rem;
         padding: 0.5rem;
         margin: 0.5rem 0;
     }
