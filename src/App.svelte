@@ -2,8 +2,6 @@
     // @ts-ignore: no types are available?
     import AutoComplete from "simple-svelte-autocomplete";
     import {
-        type Journey,
-        type Departures,
         fetchDepartures,
         departures,
     } from "./lib/departures";
@@ -77,7 +75,7 @@
         <section class="section">
             <AutoComplete
                     items={stations}
-                    labelFunction={(item) => item.station + " (" + item.code + ")"}
+                    labelFunction={(item: Station) => item.station + " (" + item.code + ")"}
                     bind:selectedItem={selectedDestination}
                     placeholder="Choose your destination station"
             />
@@ -99,7 +97,7 @@
                     {#each $departures.journeys.slice(0, 5) as journey, i}
                         <JourneyPane
                                 {journey}
-                                isLastTrain={i == $departures.journeys.length - 1}
+                                isLastTrain={i === $departures.journeys.length - 1}
                         />
                     {/each}
 
@@ -113,7 +111,7 @@
                     {/if}
                 </div>
             </section>
-        {:else if $departures && $departures.journeys.length == 0}
+        {:else if $departures && $departures.journeys.length === 0}
             <section class="section">
                 <article class="message is-info">
                     <div class="message-header">
