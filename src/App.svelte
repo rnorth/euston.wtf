@@ -1,9 +1,6 @@
 <script lang="ts">
     import AutoComplete from "simple-svelte-autocomplete";
-    import {
-        fetchDepartures,
-        departures,
-    } from "./lib/departures";
+    import {departures, fetchDepartures} from "./lib/departures";
     import JourneyPane from "./lib/JourneyPane.svelte";
     import Title from "./lib/Title.svelte";
     import {onMount} from "svelte";

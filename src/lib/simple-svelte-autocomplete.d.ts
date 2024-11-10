@@ -1,6 +1,6 @@
 /* NB: you cannot have a import or export on top of this file, otherwise it will not work. */
 declare module 'simple-svelte-autocomplete' {
-    import { SvelteComponent } from 'svelte';
+    import {SvelteComponent} from 'svelte';
 
     export interface AutoCompleteAttributes<T>
         extends svelte.JSX.HTMLAttributes<HTMLElementTagNameMap['div']> {
@@ -79,7 +79,9 @@ declare module 'simple-svelte-autocomplete' {
         'dropdown-footer': { nbItems: number, maxItemsToShowInList: number }
     }
 
-    export interface AutoCompleteProps<T> extends AutoCompleteAttributes<T>, AutoCompleteCallbacks<T>, AutoCompleteFunctions<T> { }
+    export interface AutoCompleteProps<T> extends AutoCompleteAttributes<T>, AutoCompleteCallbacks<T>, AutoCompleteFunctions<T> {
+    }
 
-    export default class AutoComplete extends SvelteComponent<AutoCompleteProps<T>, undefined, AutoCompleteSlots<T>> { }
+    export default class AutoComplete extends SvelteComponent<AutoCompleteProps<T>, undefined, AutoCompleteSlots<T>> {
+    }
 }
