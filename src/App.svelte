@@ -87,14 +87,14 @@
             <section class="section">
                 <h2>
                     Departures to <strong>{selectedDestination?.station} ({selectedDestination?.code})</strong>
-                    <span>
-            {#if now > nextRefresh}
-                - Updating
-            {:else}
-                - Updating in <code>{ Math.round((nextRefresh - now) / 1000) }</code> seconds
-            {/if}
-          </span>
                 </h2>
+                <p>
+                    {#if now > nextRefresh}
+                        Updating automatically...
+                    {:else}
+                        Updating in <code>{ Math.round((nextRefresh - now) / 1000) }</code> seconds
+                    {/if}
+                </p>
                 <div>
                     {#each $departures.journeys.slice(0, 5) as journey, i}
                         <JourneyPane
