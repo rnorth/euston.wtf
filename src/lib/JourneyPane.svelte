@@ -43,7 +43,7 @@
     {/if}
 
     {#if journey.isDelayed}
-      <span>Delayed by {journey.delayInMinutes} mins</span>
+      <span>Delayed</span>
     {/if}
   </div>
 </li>
