@@ -28,63 +28,74 @@
     "summary": "OK"
         */
 
-import { writable } from "svelte/store";
+import {writable} from "svelte/store";
 
 export interface Journey {
-  arrivalTime: string;
-  cancelReasonShortText: string;
-  delayInMinutes: number;
-  departureTime: string;
-  isCancelled: boolean;
-  isDelayed: boolean;
-  isPlatformChanged: boolean;
-  isPlatformConfirmed: boolean;
-  platform: string;
-  runDate: string;
-  runningLatenessInMinutes: number;
-  scheduledArrivalTime: string;
-  scheduledDepartureTime: string;
-  serviceType: string;
-  serviceUid: string;
+    arrivalTime: string;
+    cancelReasonShortText: string;
+    delayInMinutes: number;
+    departureTime: string;
+    isCancelled: boolean;
+    isDelayed: boolean;
+    isPlatformChanged: boolean;
+    isPlatformConfirmed: boolean;
+    platform: string;
+    runDate: string;
+    runningLatenessInMinutes: number;
+    scheduledArrivalTime: string;
+    scheduledDepartureTime: string;
+    serviceType: string;
+    serviceUid: string;
 }
 
 export interface Departures {
-  attribution: string;
-  journeys: Journey[];
-  params: {
-    date: string;
-    destination: string;
-    origin: string;
-  };
-  summary: string;
+    attribution: string;
+    journeys: Journey[];
+    params: {
+        date: string;
+        destination: string;
+        origin: string;
+    };
+    summary: string;
 }
 
 export const departures = writable<Departures | null>(null);
 
 export async function fetchDepartures(destination: string) {
-  if (destination !== "") {
-    try {
-      const response = await fetch(
-        `https://rtt-journey-api.rnorth.workers.dev/journeys/EUS/${destination}`,
-        {
-          headers: {
-            Accept: "application/json",
-          },
+    if (destination !== "") {
+        try {
+            const response = await fetch(
+                `https://rtt-journey-api.rnorth.workers.dev/journeys/EUS/${destination}`,
+                {
+                    headers: {
+                        Accept: "application/json",
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("Network response was not ok " + response.statusText);
+            }
+
+            const data = await response.json();
+
+            // filter data.journeys to remove departures that have already left
+            data.journeys = data.journeys.filter((journey) => {
+                const nowHHMM = new Date().toLocaleTimeString("en-GB", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                });
+
+                return journey.departureTime > nowHHMM;
+            });
+
+            console.log(data);
+            departures.set(data);
+        } catch (error) {
+            console.error(
+                "There has been a problem with your fetch operation:",
+                error
+            );
         }
-      );
-
-      if (!response.ok) {
-        throw new Error("Network response was not ok " + response.statusText);
-      }
-
-      const data = await response.json();
-      console.log(data);
-      departures.set(data);
-    } catch (error) {
-      console.error(
-        "There has been a problem with your fetch operation:",
-        error
-      );
     }
-  }
 }
