@@ -134,7 +134,11 @@
     <footer class="footer mt-6">
         <div class="content has-text-centered">
             <p>
-                <strong>euston.wtf</strong> is a just-for-fun side project.
+                <strong>Pro tip:</strong> Bookmark this page
+                to quickly check departures to your destination in future.
+            </p>
+            <p>
+                euston.wtf is a just-for-fun side project.
                 Powered by the <a href="https://www.realtimetrains.co.uk">Realtime Trains</a> API.
             </p>
             <p>Contact <a href="mailto:admin@euston.wtf">admin@euston.wtf</a> with any enquiries.</p>
