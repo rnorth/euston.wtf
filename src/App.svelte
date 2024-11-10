@@ -1,5 +1,4 @@
 <script lang="ts">
-    // @ts-ignore: no types are available?
     import AutoComplete from "simple-svelte-autocomplete";
     import {
         fetchDepartures,

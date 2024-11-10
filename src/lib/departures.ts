@@ -80,7 +80,7 @@ export async function fetchDepartures(destination: string) {
             const data = await response.json();
 
             // filter data.journeys to remove departures that have already left
-            data.journeys = data.journeys.filter((journey) => {
+            data.journeys = data.journeys.filter((journey: Journey) => {
                 const nowHHMM = new Date().toLocaleTimeString("en-GB", {
                     hour: "2-digit",
                     minute: "2-digit",
