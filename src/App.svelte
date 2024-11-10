@@ -75,7 +75,6 @@
         </section>
 
         <section class="section">
-            <p></p>
             <AutoComplete
                     items={stations}
                     labelFunction={(item) => item.station + " (" + item.code + ")"}
@@ -96,7 +95,7 @@
             {/if}
           </span>
                 </h2>
-                <ul>
+                <div>
                     {#each $departures.journeys.slice(0, 5) as journey, i}
                         <JourneyPane
                                 {journey}
@@ -106,13 +105,13 @@
 
                     <!-- if more than five journeys also display the final item -->
                     {#if $departures.journeys.length > 5}
-                        <li class="ellipsis" aria-hidden="true">...</li>
+                        <div class="ellipsis" aria-hidden="true">...</div>
                         <JourneyPane
                                 journey={$departures.journeys[$departures.journeys.length - 1]}
                                 isLastTrain={true}
                         />
                     {/if}
-                </ul>
+                </div>
             </section>
         {:else if $departures && $departures.journeys.length == 0}
             <section class="section">
@@ -151,7 +150,7 @@
 </div>
 
 <style>
-    li.ellipsis {
+    .ellipsis {
         list-style-type: none;
         text-align: center;
     }
