@@ -14,8 +14,16 @@
     let isVisible = true;
 
     onMount(() => {
-        // hash part of the URL is the destination code, if set
-        if (window.location.hash) {
+        if (window.location.pathname.length > 1) {
+            // path part of the URL is the destination code, if set
+            const code = window.location.pathname.slice(1);
+            const station = stations.find((s) => s.code === code);
+            if (station) {
+                selectedDestination = station;
+                doRefresh();
+            }
+        } else if (window.location.hash) {
+            // hash part of the URL is the destination code, if set
             const code = window.location.hash.slice(1);
             const station = stations.find((s) => s.code === code);
             if (station) {
@@ -57,8 +65,14 @@
             destinationCode = selectedDestination.code;
             doRefresh();
             departures.set(null);
-            window.location.hash = selectedDestination.code;
+
+            // use pushState to avoid page reload
+            window.history.pushState(null, "", `/${selectedDestination.code}`);
         }
+    }
+
+    $: {
+        document.title = `Departures to ${selectedDestination?.station} (${selectedDestination?.code}) - euston.wtf`;
     }
 </script>
 
