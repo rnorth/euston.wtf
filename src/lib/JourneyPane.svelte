@@ -15,17 +15,13 @@
     {/if}
   </div>
 
-  <span class="platform">Platform</span>
-
-  <div class="platform">
-    {journey.platform}
-  </div>
-
   <div>
+    <span class="platform">Platform {journey.platform}</span>
+
     {#if journey.isPlatformConfirmed}
-      <span title="Platform confirmed - very likely">Confirmed</span>
+      <span title="Platform confirmed - very likely">(Confirmed)</span>
     {:else}
-      <span title="As scheduled - could change still">May change</span>
+      <span title="As scheduled - could change still">(Scheduled)</span>
     {/if}
   </div>
 
@@ -52,7 +48,7 @@
   /* li displays as a box with rounded borders all round */
   li {
     display: grid;
-    grid-template-columns: 1fr 2fr 1fr 1fr 2fr;
+    grid-template-columns: 1fr 4fr 2fr;
     gap: 0;
     padding: 0.5rem;
     border: 1px solid gray;
@@ -62,10 +58,6 @@
 
   li > div {
     align-self: start;
-  }
-
-  #platform {
-    text-align: right;
   }
 
   .platform {
@@ -80,7 +72,6 @@
   }
 
   .updates span {
-    /* pill */
     display: inline-block;
     padding: 0.25rem 0.5rem;
     border-radius: 1rem;
