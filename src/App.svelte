@@ -64,15 +64,16 @@
     </section>
 
     <section class="section">
+      <p></p>
       <AutoComplete
         items={stations}
         labelFunction={(item) => item.station + " (" + item.code + ")"}
         bind:selectedItem={selectedDestination}
-        placeholder="Trains to..."
+        placeholder="Choose your destination station"
       />
     </section>
 
-    {#if $departures}
+    {#if $departures && $departures.journeys.length > 0}
       <section class="section">
         <h2>
           Departures to {selectedDestination?.station} ({selectedDestination?.code})
@@ -101,6 +102,19 @@
             />
           {/if}
         </ul>
+      </section>
+    {:else if $departures && $departures.journeys.length == 0}
+      <section class="section">
+        <article class="message is-info">
+          <div class="message-header">
+            <p>No departures found today</p>
+            <button class="delete" aria-label="delete"></button>
+          </div>
+          <div class="message-body">
+            No departures to {selectedDestination?.station} ({selectedDestination?.code}) could be found today.
+            Consult official sources for travel information.
+          </div>
+        </article>
       </section>
     {/if}
   </main>
