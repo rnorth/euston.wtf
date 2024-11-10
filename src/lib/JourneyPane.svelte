@@ -16,7 +16,7 @@
   </div>
 
   <div>
-    <span class="platform">Platform {journey.platform}</span>
+    <p class="platform">Platform {journey.platform}</p>
 
     {#if journey.isPlatformConfirmed}
       <span title="Platform confirmed - very likely">(Confirmed)</span>
@@ -62,7 +62,6 @@
 
   .platform {
     font-weight: 800;
-    margin-left: 2ch;
   }
 
   span[title] {
