@@ -86,12 +86,12 @@
         {#if $departures && $departures.journeys.length > 0}
             <section class="section">
                 <h2>
-                    Departures to {selectedDestination?.station} ({selectedDestination?.code})
+                    Departures to <strong>{selectedDestination?.station} ({selectedDestination?.code})</strong>
                     <span>
             {#if now > nextRefresh}
-              (Updating)
+                - Updating
             {:else}
-              (Updating in { Math.round((nextRefresh - now) / 1000) } seconds)
+                - Updating in <code>{ Math.round((nextRefresh - now) / 1000) }</code> seconds
             {/if}
           </span>
                 </h2>
