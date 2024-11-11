@@ -1,5 +1,6 @@
 <script lang="ts">
     import AutoComplete from "simple-svelte-autocomplete";
+    import {slide} from "svelte/transition";
     import {departures, fetchDepartures} from "./lib/departures";
     import JourneyPane from "./lib/JourneyPane.svelte";
     import Title from "./lib/Title.svelte";
@@ -117,17 +118,21 @@
                     {/if}
                 </p>
                 <div>
-                    {#each $departures.journeys.slice(0, 5) as journey, i}
-                        <JourneyPane
-                                {journey}
-                                isLastTrain={i === $departures.journeys.length - 1}
-                        />
+                    {#each $departures.journeys.slice(0, 5) as journey, i (journey.serviceUid)}
+                        <div out:slide={{duration: 500}}>
+                            <JourneyPane
+                                    {journey}
+                                    isLastTrain={i === $departures.journeys.length - 1}
+                            />
+                        </div>
                     {/each}
 
                     {#if $departures.journeys.length > 5 && hideLaterJourneys}
                         <!-- if more than five journeys, hide later journeys but display the final item -->
                         <div class="has-text-centered">
-                            <button class="button is-centered ellipsis" title="Show more" on:click={() => hideLaterJourneys=false}>...</button>
+                            <button class="button is-centered ellipsis" title="Show more"
+                                    on:click={() => hideLaterJourneys=false}>...
+                            </button>
                         </div>
                         <JourneyPane
                                 journey={$departures.journeys[$departures.journeys.length - 1]}
@@ -135,10 +140,12 @@
                         />
                     {:else}
                         <!-- five or fewer journeys, or if the user has chosen to show all -->
-                        {#each $departures.journeys.slice(5, -1) as journey, i}
-                            <JourneyPane
-                                    {journey}
-                            />
+                        {#each $departures.journeys.slice(5, -1) as journey, i (journey.serviceUid)}
+                            <div out:slide={{duration: 500}}>
+                                <JourneyPane
+                                        {journey}
+                                />
+                            </div>
                         {/each}
                         <JourneyPane
                                 journey={$departures.journeys[$departures.journeys.length - 1]}
