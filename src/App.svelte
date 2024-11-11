@@ -86,7 +86,9 @@
     }
 
     $: {
-        document.title = `Departures to ${selectedDestination?.station} (${selectedDestination?.code}) - euston.wtf`;
+        if (selectedDestination !== null) {
+            document.title = `Departures to ${selectedDestination?.station} (${selectedDestination?.code}) - euston.wtf`;
+        }
     }
 </script>
 
