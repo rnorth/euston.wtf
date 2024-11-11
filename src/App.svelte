@@ -13,6 +13,8 @@
     let now = new Date().getTime();
     let isVisible = true;
 
+    let hideLaterJourneys = true;
+
     function reactToUrlChange() {
         if (window.location.pathname.length > 1) {
             // path part of the URL is the destination code, if set
@@ -122,9 +124,22 @@
                         />
                     {/each}
 
-                    <!-- if more than five journeys also display the final item -->
-                    {#if $departures.journeys.length > 5}
-                        <div class="ellipsis" aria-hidden="true">...</div>
+                    {#if $departures.journeys.length > 5 && hideLaterJourneys}
+                        <!-- if more than five journeys, hide later journeys but display the final item -->
+                        <div class="has-text-centered">
+                            <button class="button is-centered ellipsis" title="Show more" on:click={() => hideLaterJourneys=false}>...</button>
+                        </div>
+                        <JourneyPane
+                                journey={$departures.journeys[$departures.journeys.length - 1]}
+                                isLastTrain={true}
+                        />
+                    {:else}
+                        <!-- five or fewer journeys, or if the user has chosen to show all -->
+                        {#each $departures.journeys.slice(5, -1) as journey, i}
+                            <JourneyPane
+                                    {journey}
+                            />
+                        {/each}
                         <JourneyPane
                                 journey={$departures.journeys[$departures.journeys.length - 1]}
                                 isLastTrain={true}
