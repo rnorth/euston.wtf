@@ -1,7 +1,7 @@
 <script lang="ts">
     import AutoComplete from "simple-svelte-autocomplete";
     import {slide} from "svelte/transition";
-    import {departures, fetchDepartures} from "./lib/departures";
+    import {departures, lastError, fetchDepartures} from "./lib/departures";
     import JourneyPane from "./lib/JourneyPane.svelte";
     import Title from "./lib/Title.svelte";
     import {onMount} from "svelte";
@@ -106,6 +106,12 @@
                     placeholder="Choose your destination station"
             />
         </section>
+
+        {#if $lastError}
+            <div class="message is-danger">
+                <div class="message-body">{$lastError}</div>
+            </div>
+        {/if}
 
         {#if $departures && $departures.journeys.length > 0}
             <section class="section">

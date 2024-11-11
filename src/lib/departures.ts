@@ -60,6 +60,7 @@ export interface Departures {
 }
 
 export const departures = writable<Departures | null>(null);
+export const lastError = writable<string | null>(null);
 
 export async function fetchDepartures(destination: string) {
     if (destination !== "") {
@@ -91,11 +92,13 @@ export async function fetchDepartures(destination: string) {
 
             console.log(data);
             departures.set(data);
+            lastError.set(null);
         } catch (error) {
             console.error(
                 "There has been a problem with your fetch operation:",
                 error
             );
+            lastError.set("Unable to retrieve data from backend. Please refresh or try again later.");
         }
     }
 }
