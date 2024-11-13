@@ -25,12 +25,14 @@
         </div>
 
         <div>
-            <p class="platform">Platform {journey.platform}</p>
+            {#if !journey.isCancelled}
+                <p class="platform">Platform {journey.platform}</p>
 
-            {#if journey.isPlatformConfirmed}
-                <span title="Platform confirmed - very likely">(Confirmed)</span>
-            {:else}
-                <span title="As scheduled - could change still">(Scheduled)</span>
+                {#if journey.isPlatformConfirmed}
+                    <span class="platform-state" title="Platform confirmed - very likely">(Confirmed)</span>
+                {:else}
+                    <span class="platform-state" title="As scheduled - could change still">(Scheduled)</span>
+                {/if}
             {/if}
         </div>
 
@@ -76,7 +78,7 @@
         font-weight: 800;
     }
 
-    span[title] {
+    .platform-state[title] {
         text-decoration-style: dashed;
         text-decoration-line: underline;
         color: gray;
