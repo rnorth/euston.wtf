@@ -80,6 +80,12 @@ export async function fetchDepartures(destination: string) {
 
             const data = await response.json();
 
+            const todayDate = new Date().toLocaleDateString("en-GB", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+            });
+
             // filter data.journeys to remove departures that have already left
             data.journeys = data.journeys.filter((journey: Journey) => {
                 const nowHHMM = new Date().toLocaleTimeString("en-GB", {
@@ -87,7 +93,8 @@ export async function fetchDepartures(destination: string) {
                     minute: "2-digit",
                 });
 
-                return journey.departureTime > nowHHMM;
+                // either the train journey is in the future or it is early tomorrow
+                return journey.departureTime > nowHHMM || journey.runDate !== todayDate;
             });
 
             console.log(data);
