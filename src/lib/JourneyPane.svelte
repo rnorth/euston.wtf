@@ -26,11 +26,12 @@
 
         <div>
             {#if !journey.isCancelled}
-                <p class="platform">Platform {journey.platform}</p>
 
                 {#if journey.isPlatformConfirmed}
+                    <p class="platform confirmed">Platform {journey.platform}</p>
                     <span class="platform-state" title="Platform confirmed - very likely">(Confirmed)</span>
                 {:else}
+                    <p class="platform">Platform {journey.platform}</p>
                     <span class="platform-state" title="As scheduled - could change still">(Scheduled)</span>
                 {/if}
             {/if}
@@ -74,7 +75,7 @@
         align-self: start;
     }
 
-    .platform {
+    .platform.confirmed {
         font-weight: 800;
     }
 
