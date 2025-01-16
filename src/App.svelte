@@ -126,16 +126,16 @@
                     {/if}
                 </p>
                 <div>
-                    {#each $departures.journeys.slice(0, 5) as journey, i (journey.serviceUid)}
-                        <div out:slide={{duration: 500}}>
-                            <JourneyPane
-                                    {journey}
-                                    isLastTrain={i === $departures.journeys.length - 1}
-                            />
-                        </div>
-                    {/each}
 
                     {#if $departures.journeys.length > 5 && hideLaterJourneys}
+                        {#each $departures.journeys.slice(0, 5) as journey, i (journey.serviceUid)}
+                            <div out:slide={{duration: 500}}>
+                                <JourneyPane
+                                        {journey}
+                                        isLastTrain={i === $departures.journeys.length - 1}
+                                />
+                            </div>
+                        {/each}
                         <!-- if more than five journeys, hide later journeys but display the final item -->
                         <div class="has-text-centered">
                             <button class="button is-centered ellipsis" title="Show more"
@@ -148,7 +148,7 @@
                         />
                     {:else}
                         <!-- five or fewer journeys, or if the user has chosen to show all -->
-                        {#each $departures.journeys.slice(5, -1) as journey, i (journey.serviceUid)}
+                        {#each $departures.journeys.slice(0, -1) as journey, i (journey.serviceUid)}
                             <div out:slide={{duration: 500}}>
                                 <JourneyPane
                                         {journey}
