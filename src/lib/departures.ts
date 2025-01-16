@@ -40,6 +40,7 @@ export interface Journey {
     isPlatformChanged: boolean;
     isPlatformConfirmed: boolean;
     platform: string;
+    serviceLocation: string;
     runDate: string;
     runningLatenessInMinutes: number;
     scheduledArrivalTime: string;

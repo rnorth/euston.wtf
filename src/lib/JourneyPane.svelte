@@ -57,6 +57,18 @@
             {#if journey.serviceType !== "train"}
                 <span class="tag is-danger">{titlecase(journey.serviceType)}</span>
             {/if}
+
+            {#if journey.serviceLocation.startsWith("APPR")}
+                <span class="tag is-info">Approaching</span>
+            {:else if journey.serviceLocation === "DEP_PREP"}
+                <span class="tag is-info">At platform</span>
+                <span class="tag is-info">Preparing to depart</span>
+            {:else if journey.serviceLocation === "DEP_READY"}
+                <span class="tag is-info">At platform</span>
+                <span class="tag is-info">Ready to depart</span>
+            {:else if journey.serviceLocation === "AT_PLAT"}
+                <span class="tag is-info">At platform</span>
+            {/if}
         </div>
     </div>
 </article>
