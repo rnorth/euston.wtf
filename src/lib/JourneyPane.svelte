@@ -1,8 +1,12 @@
 <script lang="ts">
     import type {Journey} from "./departures";
 
-    export let journey: Journey;
-    export let isLastTrain: boolean = false;
+    interface Props {
+        journey: Journey;
+        isLastTrain?: boolean;
+    }
+
+    let { journey, isLastTrain = false }: Props = $props();
 
     function rowClass() {
         return journey.isCancelled ? "is-danger" : journey.isDelayed ? "is-warning" : "";
