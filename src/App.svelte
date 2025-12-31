@@ -15,15 +15,16 @@
     let isVisible = true;
 
     let hideLaterJourneys = true;
+    let isNavigatingFromUrl = false;
 
     function reactToUrlChange() {
+        isNavigatingFromUrl = true;
         if (window.location.pathname.length > 1) {
             // path part of the URL is the destination code, if set
             const code = window.location.pathname.slice(1);
             const station = stations.find((s) => s.code === code);
             if (station) {
                 selectedDestination = station;
-                doRefresh();
             }
         } else if (window.location.hash) {
             // hash part of the URL is the destination code, if set
@@ -31,9 +32,9 @@
             const station = stations.find((s) => s.code === code);
             if (station) {
                 selectedDestination = station;
-                doRefresh();
             }
         }
+        isNavigatingFromUrl = false;
     }
 
     onMount(() => {
@@ -80,8 +81,11 @@
             doRefresh();
             departures.set(null);
 
-            // use pushState to avoid page reload
-            window.history.pushState(null, "", `/${selectedDestination.code}`);
+            // use pushState to avoid page reload, but only when user selects from dropdown
+            // (not when reacting to URL changes from initial load or browser back/forward)
+            if (!isNavigatingFromUrl) {
+                window.history.pushState(null, "", `/${selectedDestination.code}`);
+            }
         }
     }
 
