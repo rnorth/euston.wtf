@@ -16,6 +16,8 @@
 
     let hideLaterJourneys = true;
 
+    const currentYear = new Date().getFullYear();
+
     function reactToUrlChange() {
         if (window.location.pathname.length > 1) {
             // path part of the URL is the destination code, if set
@@ -186,7 +188,7 @@
                 to quickly check departures to your destination in future.
             </p>
             <p>
-                euston.wtf is a just-for-fun side project. Site and webapp &copy; Richard North 2024.
+                euston.wtf is a just-for-fun side project. Site and webapp &copy; Richard North {currentYear}.
                 Powered by the <a href="https://www.realtimetrains.co.uk">Realtime Trains</a> API.
             </p>
             <p>Contact <a href="mailto:admin@euston.wtf">admin@euston.wtf</a> with any enquiries.</p>
