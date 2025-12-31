@@ -81,11 +81,8 @@ export async function fetchDepartures(destination: string) {
 
             const data = await response.json();
 
-            const todayDate = new Date().toLocaleDateString("en-GB", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-            });
+            const today = new Date();
+            const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
             // filter data.journeys to remove departures that have already left
             data.journeys = data.journeys.filter((journey: Journey) => {
