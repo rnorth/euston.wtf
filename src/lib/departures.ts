@@ -174,17 +174,17 @@ export function validatePlatform(
         return { isConfident: true };
     }
 
-    // Check time difference (5 minute threshold)
+    // Check time difference (10 minute threshold)
     const journeyMinutes = parseTime(journey.departureTime);
     const nextMinutes = parseTime(nextDeparture.departureTime);
     const diffMinutes = nextMinutes - journeyMinutes;
 
-    if (diffMinutes > 5) {
+    if (diffMinutes > 10) {
         // Enough time for platform change
         return { isConfident: true };
     }
 
-    // Conflicting departure within 5 minutes to different destination
+    // Conflicting departure within 10 minutes to different destination
     return {
         isConfident: false,
         conflictingDeparture: nextDeparture
