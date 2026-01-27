@@ -1,5 +1,6 @@
 <script lang="ts">
-    import type {Journey} from "./departures";
+    import { slide } from "svelte/transition";
+    import { departuresByPlatform, validatePlatform, type Journey } from "./departures";
 
     interface Props {
         journey: Journey;
@@ -7,6 +8,10 @@
     }
 
     let { journey, isLastTrain = false }: Props = $props();
+
+    // Platform validation
+    let validation = $derived(validatePlatform(journey, $departuresByPlatform));
+    let showConflictDetails = $state(false);
 
     function rowClass() {
         return journey.isCancelled ? "is-danger" : journey.isDelayed ? "is-warning" : "";
@@ -73,6 +78,30 @@
             {:else if journey.serviceLocation === "AT_PLAT"}
                 <span class="tag is-info">At platform</span>
             {/if}
+
+            {#if !validation.isConfident}
+                <div class="warning-indicator">
+                    <span
+                        class="tag is-warning"
+                        role="button"
+                        tabindex="0"
+                        onclick={() => showConflictDetails = !showConflictDetails}
+                        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { showConflictDetails = !showConflictDetails; e.preventDefault(); }}}
+                        style="cursor: pointer;"
+                    >
+                        ⚠️ Platform uncertain
+                    </span>
+                </div>
+                {#if showConflictDetails && validation.conflictingDeparture}
+                    <div class="conflict-details" transition:slide={{ duration: 300 }}>
+                        <div class="message is-warning is-small">
+                            <div class="message-body">
+                                Next departure from Platform {journey.platform} at <strong>{validation.conflictingDeparture.departureTime}</strong> goes to <strong>{validation.conflictingDeparture.destinationDescription || validation.conflictingDeparture.destination}</strong>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+            {/if}
         </div>
     </div>
 </article>
@@ -103,5 +132,19 @@
 
     .strikethrough {
         text-decoration: line-through;
+    }
+
+    .conflict-details {
+        margin-top: 0.5rem;
+    }
+
+    .conflict-details .message {
+        margin-bottom: 0;
+    }
+
+    .conflict-details .message-body {
+        padding: 0.75rem;
+        font-size: 0.85rem;
+        display: block;
     }
 </style>

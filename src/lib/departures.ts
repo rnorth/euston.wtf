@@ -35,6 +35,8 @@ export interface Journey {
     cancelReasonShortText: string;
     delayInMinutes: number;
     departureTime: string;
+    destination: string;
+    destinationDescription: string;
     isCancelled: boolean;
     isDelayed: boolean;
     isPlatformChanged: boolean;
@@ -60,26 +62,48 @@ export interface Departures {
     summary: string;
 }
 
+export interface PlatformValidation {
+    isConfident: boolean;
+    conflictingDeparture?: Journey;
+}
+
 export const departures = writable<Departures | null>(null);
+export const departuresByPlatform = writable<{[key: string]: Journey[]} | null>(null);
 export const lastError = writable<string | null>(null);
 
 export async function fetchDepartures(destination: string) {
     if (destination !== "") {
         try {
-            const response = await fetch(
-                `https://api.euston.wtf/journeys/EUS/${destination}`,
-                {
-                    headers: {
-                        Accept: "application/json",
-                    },
-                }
-            );
+            // Fetch both endpoints in parallel
+            const [journeysResponse, platformsResponse] = await Promise.all([
+                fetch(
+                    `https://api.euston.wtf/journeys/EUS/${destination}`,
+                    {
+                        headers: {
+                            Accept: "application/json",
+                        },
+                    }
+                ),
+                fetch(
+                    `https://api.euston.wtf/departures/EUS`,
+                    {
+                        headers: {
+                            Accept: "application/json",
+                        },
+                    }
+                )
+            ]);
 
-            if (!response.ok) {
-                throw new Error("Network response was not ok " + response.statusText);
+            if (!journeysResponse.ok) {
+                throw new Error("Network response was not ok " + journeysResponse.statusText);
             }
 
-            const data = await response.json();
+            if (!platformsResponse.ok) {
+                throw new Error("Network response was not ok " + platformsResponse.statusText);
+            }
+
+            const data = await journeysResponse.json();
+            const platformsData = await platformsResponse.json();
 
             const today = new Date();
             const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -97,6 +121,7 @@ export async function fetchDepartures(destination: string) {
 
             console.log(data);
             departures.set(data);
+            departuresByPlatform.set(platformsData.departuresByPlatform);
             lastError.set(null);
         } catch (error) {
             console.error(
@@ -106,4 +131,62 @@ export async function fetchDepartures(destination: string) {
             lastError.set("Unable to retrieve data from backend. Please refresh or try again later.");
         }
     }
+}
+
+// Helper function to parse time string (HH:MM) into minutes
+function parseTime(timeStr: string): number {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+// Validate whether a platform assignment is confident or uncertain
+export function validatePlatform(
+    journey: Journey,
+    departuresByPlatform: {[key: string]: Journey[]} | null
+): PlatformValidation {
+    // If platform is confirmed, always confident
+    if (journey.isPlatformConfirmed) {
+        return { isConfident: true };
+    }
+
+    // If no platform assigned or no platform data available, neutral (confident)
+    if (!journey.platform || !departuresByPlatform) {
+        return { isConfident: true };
+    }
+
+    const platformDepartures = departuresByPlatform[journey.platform];
+    if (!platformDepartures || platformDepartures.length === 0) {
+        // No other departures from this platform = confident
+        return { isConfident: true };
+    }
+
+    // Find next departure from this platform after our journey's departure time
+    const nextDeparture = platformDepartures.find(d =>
+        d.departureTime >= journey.departureTime
+    );
+
+    if (!nextDeparture) {
+        return { isConfident: true };
+    }
+
+    // Check if it's the same service
+    if (nextDeparture.serviceUid === journey.serviceUid) {
+        return { isConfident: true };
+    }
+
+    // Check time difference (5 minute threshold)
+    const journeyMinutes = parseTime(journey.departureTime);
+    const nextMinutes = parseTime(nextDeparture.departureTime);
+    const diffMinutes = nextMinutes - journeyMinutes;
+
+    if (diffMinutes > 5) {
+        // Enough time for platform change
+        return { isConfident: true };
+    }
+
+    // Conflicting departure within 5 minutes to different destination
+    return {
+        isConfident: false,
+        conflictingDeparture: nextDeparture
+    };
 }
