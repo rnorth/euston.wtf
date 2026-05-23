@@ -119,7 +119,6 @@ export async function fetchDepartures(destination: string) {
                 return journey.departureTime > nowHHMM || journey.runDate !== todayDate;
             });
 
-            console.log(data);
             departures.set(data);
             departuresByPlatform.set(platformsData.departuresByPlatform);
             lastError.set(null);

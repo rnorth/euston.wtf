@@ -42,10 +42,7 @@
     onMount(() => {
         reactToUrlChange();
 
-        window.addEventListener("popstate", (event) => {
-            console.log(
-                `location: ${document.location}, state: ${JSON.stringify(event.state)}`,
-            )
+        window.addEventListener("popstate", () => {
             reactToUrlChange();
         });
 
@@ -55,10 +52,8 @@
 
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
-                console.log("hidden - suspending refresh");
                 isVisible = false;
             } else {
-                console.log("visible - resuming refresh");
                 isVisible = true;
                 nextRefresh = 0;
             }
@@ -80,6 +75,7 @@
     $: {
         if (selectedDestination !== null) {
             destinationCode = selectedDestination.code;
+            hideLaterJourneys = true;
             doRefresh();
             departures.set(null);
 
@@ -134,12 +130,9 @@
                 <div>
 
                     {#if $departures.journeys.length > 5 && hideLaterJourneys}
-                        {#each $departures.journeys.slice(0, 5) as journey, i (journey.serviceUid)}
+                        {#each $departures.journeys.slice(0, 5) as journey (journey.serviceUid)}
                             <div out:slide={{duration: 500}}>
-                                <JourneyPane
-                                        {journey}
-                                        isLastTrain={i === $departures.journeys.length - 1}
-                                />
+                                <JourneyPane {journey} />
                             </div>
                         {/each}
                         <!-- if more than five journeys, hide later journeys but display the final item -->

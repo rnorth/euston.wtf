@@ -3,7 +3,6 @@
 
 <style>
     h1 {
-        font-size: 48pt;
         font-size: 8vw;
         font-weight: 900;
 
