@@ -115,8 +115,6 @@ npm run check    # Type check with svelte-check and tsc
 
 ### Git Workflow
 
-- **Current branch**: `claude/add-claude-documentation-beMnV`
-- **Never push to main** without explicit permission
 - **Commit messages**: Use descriptive messages following existing patterns
   - Example: "Fix display when fewer than five trains"
   - Example: "Show service location"
