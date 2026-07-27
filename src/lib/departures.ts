@@ -9,6 +9,8 @@
             "departureTime": "19:39",
             "isCancelled": false,
             "isDelayed": false,
+            "isDeparted": false,
+            "isOverdue": false,
             "isPlatformChanged": false,
             "isPlatformConfirmed": false,
             "platform": "10",
@@ -39,6 +41,10 @@ export interface Journey {
     destinationDescription: string;
     isCancelled: boolean;
     isDelayed: boolean;
+    // an actual departure has been reported - the train has definitely left
+    isDeparted: boolean;
+    // past its expected departure time with no report - the train may still be here
+    isOverdue: boolean;
     isPlatformChanged: boolean;
     isPlatformConfirmed: boolean;
     platform: string;
@@ -105,19 +111,8 @@ export async function fetchDepartures(destination: string) {
             const data = await journeysResponse.json();
             const platformsData = await platformsResponse.json();
 
-            const today = new Date();
-            const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
-            // filter data.journeys to remove departures that have already left
-            data.journeys = data.journeys.filter((journey: Journey) => {
-                const nowHHMM = new Date().toLocaleTimeString("en-GB", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                });
-
-                // either the train journey is in the future or it is early tomorrow
-                return journey.departureTime > nowHHMM || journey.runDate !== todayDate;
-            });
+            // Overdue trains stay listed; only the API knows what has actually left.
+            data.journeys = data.journeys.filter((journey: Journey) => !journey.isDeparted);
 
             departures.set(data);
             departuresByPlatform.set(platformsData.departuresByPlatform);
@@ -159,9 +154,11 @@ export function validatePlatform(
         return { isConfident: true };
     }
 
-    // Find next departure from this platform after our journey's departure time
+    // Find next departure from this platform after our journey's departure time.
+    // Departed trains report their actual departure time, so they'd otherwise be
+    // picked as a conflict despite having already left the platform.
     const nextDeparture = platformDepartures.find(d =>
-        d.departureTime >= journey.departureTime
+        !d.isDeparted && d.departureTime >= journey.departureTime
     );
 
     if (!nextDeparture) {
