@@ -13,8 +13,14 @@
     let validation = $derived(validatePlatform(journey, $departuresByPlatform));
     let showConflictDetails = $state(false);
 
+    // A cancelled train never reports an actual departure, so the API flags it overdue
+    // once its time passes - but "cancelled" is the only status worth showing.
+    let isOverdue = $derived(journey.isOverdue && !journey.isCancelled);
+
     function rowClass() {
-        return journey.isCancelled ? "is-danger" : journey.isDelayed ? "is-warning" : "";
+        if (journey.isCancelled) return "is-danger";
+        if (isOverdue || journey.isDelayed) return "is-warning";
+        return "";
     }
 
     function titlecase(str: string) {
@@ -25,7 +31,9 @@
 <article class="message {rowClass()}">
     <div class="message-body">
         <div>
-            {#if journey.isDelayed}
+            {#if isOverdue}
+                <span class="muted">{journey.departureTime}</span>
+            {:else if journey.isDelayed}
                 <span>{journey.departureTime}</span>
                 <span class="strikethrough">{journey.scheduledDepartureTime}</span>
             {:else}
@@ -59,7 +67,10 @@
                 <span class="tag is-danger" title="{journey.cancelReasonShortText}">Cancelled</span>
             {/if}
 
-            {#if journey.isDelayed}
+            {#if isOverdue}
+                <span class="tag is-warning"
+                      title="Past its departure time with no report from the train - check the departure boards">Departure delayed</span>
+            {:else if journey.isDelayed}
                 <span class="tag is-warning">Delayed</span>
             {/if}
 
@@ -132,6 +143,12 @@
 
     .strikethrough {
         text-decoration: line-through;
+    }
+
+    /* Overdue: the time has passed but the train may still be here, so dim it
+       rather than striking it through - a struck time reads as "gone". */
+    .muted {
+        opacity: 0.6;
     }
 
     .conflict-details {
