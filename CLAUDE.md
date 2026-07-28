@@ -15,7 +15,7 @@ This document provides comprehensive guidance for AI assistants working with the
 **Key Facts:**
 - **Language**: TypeScript
 - **Framework**: Svelte 5.1.3
-- **Build Tool**: Vite 5.4.10
+- **Build Tool**: Vite 8.0.14
 - **CSS Framework**: Bulma 1.0.2 (via CDN)
 - **Module Type**: ES Module
 - **Target Origin Station**: EUS (London Euston)
@@ -26,7 +26,7 @@ This document provides comprehensive guidance for AI assistants working with the
 ### Directory Structure
 
 ```
-/home/user/euston.wtf/
+euston.wtf/
 ├── src/
 │   ├── App.svelte              # Main application component (205 lines)
 │   ├── main.ts                 # Application entry point
@@ -57,7 +57,7 @@ App.svelte (main container)
 ├── Error Message (conditional)
 └── Departures Section (conditional)
     ├── JourneyPane.svelte (× N journeys)
-    └── JourneyPane.svelte (last journey, special styling)
+    └── JourneyPane.svelte (last journey, tagged "Last train!")
 ```
 
 ### Data Flow
@@ -65,7 +65,7 @@ App.svelte (main container)
 1. **User Selection** → Station selected via AutoComplete
 2. **URL Update** → `window.history.pushState()` updates URL to `/{stationCode}`
 3. **API Fetch** → `fetchDepartures()` called with destination code
-4. **Store Update** → Svelte stores (`departures`, `lastError`) updated
+4. **Store Update** → Svelte stores (`departures`, `departuresByPlatform`, `lastError`) updated
 5. **Reactive Render** → Components re-render based on store changes
 6. **Auto-Refresh** → 60-second timer triggers new fetch (if tab visible)
 
@@ -154,7 +154,7 @@ $: {
 // Multiple reactive blocks for separation of concerns
 $: {
     if (selectedDestination !== null) {
-        document.title = `Departures to ${selectedDestination?.station}`;
+        document.title = `Departures to ${selectedDestination?.station} (${selectedDestination?.code}) - euston.wtf`;
     }
 }
 ```
@@ -182,9 +182,9 @@ onMount(() => {
     // URL parsing on load
     reactToUrlChange();
 
-    // Event listeners
-    window.addEventListener("popstate", reactToUrlChange);
-    document.addEventListener("visibilitychange", handleVisibility);
+    // Event listeners (both registered with inline closures; neither is torn down)
+    window.addEventListener("popstate", () => { reactToUrlChange(); });
+    document.addEventListener("visibilitychange", () => { /* toggles isVisible */ });
 
     // Timers
     setInterval(() => { now = new Date().getTime(); }, 1000);
@@ -193,8 +193,11 @@ onMount(() => {
 
 **Event Handlers**
 ```typescript
-// Use on:event directive
+// App.svelte still uses the legacy on:event directive
 <button on:click={() => hideLaterJourneys = false}>...</button>
+
+// JourneyPane.svelte uses the Svelte 5 property form - prefer this in new code
+<span onclick={() => showConflictDetails = !showConflictDetails}>...</span>
 ```
 
 ### CSS Patterns
@@ -248,13 +251,17 @@ The app uses **custom client-side routing** (not a framework):
 3. **Browser history**: Uses `pushState()` to avoid page reloads
 4. **Navigation**: Listens to `popstate` events for back/forward
 
-**Key Code**: App.svelte:19-37, 84
+**Key Code**: `reactToUrlChange()` and the selection reactive block in App.svelte
 
 ### Auto-Refresh Logic
 
 ```typescript
-// 60-second refresh cycle
-nextRefresh = now + 60000;
+// 60-second refresh cycle, scheduled only once the fetch settles
+function doRefresh() {
+    fetchDepartures(destinationCode).then(() => {
+        nextRefresh = now + 60000;
+    });
+}
 
 // Smart pause when tab hidden
 document.addEventListener("visibilitychange", () => {
@@ -274,7 +281,7 @@ $: {
 }
 ```
 
-**Key Files**: App.svelte:14-15, 49-62, 71-75
+**Key Files**: the `now` / `nextRefresh` / `isVisible` state, the `visibilitychange` listener in `onMount`, and the refresh reactive block in App.svelte
 
 ### Which Departures Are Shown
 
@@ -291,16 +298,17 @@ An overdue train therefore stays on the board, labelled "Departure delayed", unt
 retires it after its grace period. Don't reintroduce a clock-based filter here — it would strip
 exactly those trains at the moment they matter most.
 
-**Key File**: departures.ts:114-115
+**Key File**: the filter in `fetchDepartures()` (departures.ts)
 
 ### Journey Display Logic
 
-- **First 5 journeys** shown by default
+- **First 5 journeys** shown by default, but only when there are more than 5
 - **"..." button** to expand and show all
-- **Last journey** always displayed (with `isLastTrain={true}` prop)
-- **Slide transitions** on removal (500ms duration)
+- **Last journey** always rendered separately (with `isLastTrain={true}` prop) in both the
+  collapsed and expanded branches
+- **Slide transitions** on removal only (`out:slide`, 500ms) — nothing animates in
 
-**Key File**: App.svelte:130-162
+**Key File**: the journey list markup in App.svelte
 
 ## Common Tasks for AI Assistants
 
@@ -323,7 +331,7 @@ exactly those trains at the moment they matter most.
 
 ### Changing API Endpoints
 
-1. **Read**: `src/lib/departures.ts:66-112`
+1. **Read**: `fetchDepartures()` in `src/lib/departures.ts`
 2. **Edit**: Update fetch URL or headers
 3. **Type check**: Ensure response matches `Departures` interface
 4. **Error handling**: Update error messages in catch block
@@ -394,7 +402,7 @@ platform:
 - Departed services are excluded first, since they report their *actual* departure time and
   would otherwise be picked as a false conflict
 
-**Key File**: departures.ts:157-162
+**Key File**: `validatePlatform()` (departures.ts)
 
 ### API Error Handling
 
@@ -403,7 +411,7 @@ Always wrap fetch calls in try-catch:
 - User sees friendly error message
 - Console logs preserve debugging info
 
-**Key File**: departures.ts:104-110
+**Key File**: the catch block in `fetchDepartures()` (departures.ts)
 
 ## Testing Considerations
 
@@ -452,7 +460,7 @@ Checks:
 
 **Endpoint**: `https://api.euston.wtf/journeys/EUS/{destination}`
 
-**Response Format**: See departures.ts:1-29 for example
+**Response Format**: See the sample response comment at the top of departures.ts
 
 **Key Fields**:
 - `journeys`: Array of journey objects
@@ -462,7 +470,7 @@ Checks:
 
 ### simple-svelte-autocomplete
 
-**Usage**: `src/App.svelte:102-107`
+**Usage**: the `<AutoComplete>` block in `src/App.svelte`
 
 **Props**:
 - `items`: Array of objects to search
@@ -490,6 +498,8 @@ Checks:
 - `now: number` - Current time (updated every second)
 - `isVisible: boolean` - Tab visibility state
 - `hideLaterJourneys: boolean` - Pagination toggle
+- `destinationCode: string` - Code passed to `fetchDepartures()`
+- `isNavigatingFromUrl: boolean` - Suppresses `pushState` while reacting to the URL, so back/forward don't push new entries
 
 **Key Functions**:
 - `reactToUrlChange()` - Parse URL and set selected station
@@ -501,15 +511,18 @@ Checks:
 **Exports**:
 - `interface Journey` - Single train journey data
 - `interface Departures` - API response structure
+- `interface PlatformValidation` - Result of a platform confidence check
 - `departures` writable store
+- `departuresByPlatform` writable store - station-wide departures keyed by platform
 - `lastError` writable store
 - `fetchDepartures(destination: string)` - Async fetch function
+- `validatePlatform(journey, departuresByPlatform)` - Platform confidence check
 
 **Key Logic**:
-- Fetches from `https://api.euston.wtf/journeys/EUS/{destination}`
+- Fetches `/journeys/EUS/{destination}` and `/departures/EUS` in parallel; both must succeed
 - Filters out journeys flagged `isDeparted` by the API
-- Sets stores on success/failure
-- Console logs for debugging
+- Sets stores on success only, so a failed refresh leaves the last good board on screen
+- Console logs the underlying error; the user sees a generic message
 
 ### src/lib/stations.ts (67 lines)
 **Purpose**: Static station data
@@ -525,10 +538,10 @@ Checks:
 
 **Props**:
 - `journey: Journey` - Journey data to display
-- `isLastTrain: boolean = false` - Whether this is the last train (special styling)
+- `isLastTrain: boolean = false` - Whether this is the last train (adds a "Last train!" tag)
 
 **Display Logic**:
-- 3-column grid: [Platform] [Times] [Status]
+- 3-column grid: [Time] [Platform] [Status]
 - Bold platform if confirmed, normal if scheduled
 - Service location indicator (at platform, approaching, departing)
 - Cancelled status (red row, red tag with reason tooltip)
@@ -553,10 +566,18 @@ Checks:
 
 **Key Code**:
 ```typescript
+import {mount} from 'svelte'
+import './app.css'
 import App from './App.svelte'
-const app = new App({ target: document.getElementById('app')! })
+
+const app = mount(App, {
+    target: document.getElementById('app')!,
+})
+
 export default app
 ```
+
+Svelte 5 mounts with `mount()`; the `new App({ target })` class API is gone.
 
 ### vite.config.ts
 **Purpose**: Vite build configuration

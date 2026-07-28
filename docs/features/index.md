@@ -31,7 +31,7 @@
 |-----------|-----------|---------|---------|
 | **Framework** | Svelte | 5.1.3 | Reactive UI with signals-based reactivity |
 | **Language** | TypeScript | Latest | Type-safe development |
-| **Build Tool** | Vite | 5.4.10 | Fast development and optimized builds |
+| **Build Tool** | Vite | 8.0.14 | Fast development and optimized builds |
 | **CSS Framework** | Bulma | 1.0.2 | Responsive styling (CDN) |
 | **Module Type** | ES Module | - | Modern JavaScript modules |
 
@@ -188,9 +188,8 @@ interface Station {
 interface Journey {
     serviceUid: string;                // Unique ID
     departureTime: string;             // "HH:MM"
-    scheduledDepartureTime: string | null;
-    platform: string | null;           // "8"
-    platformConfirmed: boolean;
+    scheduledDepartureTime: string;    // "HH:MM"
+    platform: string;                  // "8"
     isPlatformConfirmed: boolean;
     isCancelled: boolean;
     isDelayed: boolean;
@@ -340,9 +339,9 @@ npm run preview  # Test production build locally
 
 ### Environment Requirements
 
-- Node.js (for build only)
+- Node.js 22.15.0 LTS (build only; pinned in `.tool-versions` for Cloudflare compatibility)
 - No runtime dependencies
-- Any static file host (Netlify, Vercel, S3, etc.)
+- Deployed to Cloudflare Pages; any static file host would work
 
 ## Known Limitations
 
@@ -362,12 +361,14 @@ npm run preview  # Test production build locally
 2. **Client-side routing only** - Direct links require JS to work
 3. **No request cancellation** - In-flight requests complete even if tab hidden
 4. **Multiple tabs duplicate requests** - No cross-tab coordination
-5. **String-based time comparison** - Works but limited to HH:MM format
-6. **Timezone-naive** - Assumes server and API use same timezone
+5. **String-based time comparison** - Only in platform validation, and it breaks across midnight
+6. **Timezone-naive** - Times are rendered as the API supplies them, with no conversion
 
 ### Scale Limitations
 
-1. **API rate limits** - Each user makes 120 req/hour (2 endpoints × 60 min)
+1. **API rate limits** - Each open tab makes up to 120 req/hour (2 endpoints × 60 min); edge
+   caching at the API absorbs most of this, which matters because the upstream Realtime Trains
+   quota is shared across all users
 2. **No caching between sessions** - Each visit starts fresh
 3. **No service worker** - No offline capability or background updates
 
@@ -421,7 +422,7 @@ When making changes, verify:
 - [ ] Departed trains filtered out, overdue trains retained
 - [ ] Error messages display correctly
 - [ ] Status indicators show correctly
-- [ ] Last train styling distinct
+- [ ] "Last train!" tag on the final journey
 - [ ] Expand/collapse works
 - [ ] Transitions smooth
 - [ ] Type checking passes

@@ -45,33 +45,37 @@ $: {
 
 ```typescript
 function doRefresh() {
-    if (selectedDestination !== null) {
-        fetchDepartures(selectedDestination.code);
+    fetchDepartures(destinationCode).then(() => {
         nextRefresh = now + 60000; // 60 seconds from now
-    }
+    });
 }
 ```
 
 **Refresh interval**: 60,000ms = 60 seconds
+
+`nextRefresh` is pushed forward only once the fetch settles, so a slow response delays the next
+cycle rather than stacking up behind it. Note it is computed from `now` as captured at that
+moment, not from the time the request started.
 
 ### Visibility Detection
 
 Uses the **Page Visibility API**:
 
 ```typescript
-let isVisible = !document.hidden;
+let isVisible = true;
 
-function handleVisibility() {
+document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
         isVisible = false;
     } else {
         isVisible = true;
         nextRefresh = 0; // Force immediate refresh
     }
-}
-
-document.addEventListener("visibilitychange", handleVisibility);
+});
 ```
+
+`isVisible` is initialised to `true` rather than `!document.hidden`, so a page loaded in a
+background tab will fetch once immediately. Harmless, but not the same as reading the API.
 
 **Behavior**:
 - Tab hidden → `isVisible = false` → Refresh paused
@@ -79,19 +83,25 @@ document.addEventListener("visibilitychange", handleVisibility);
 
 ### Initial Load
 
+Selection is handled by a second reactive block (the one that also updates the URL):
+
 ```typescript
 $: {
     if (selectedDestination !== null) {
-        // Initial load
+        destinationCode = selectedDestination.code;
+        hideLaterJourneys = true;
         doRefresh();
+        departures.set(null);
+        // ... pushState
     }
 }
 ```
 
 When a destination is selected:
 1. Immediate API call via `doRefresh()`
-2. Sets `nextRefresh` for 60s later
-3. Timer loop handles subsequent refreshes
+2. `departures.set(null)` clears the previous station's board so stale journeys can't flash up
+3. Sets `nextRefresh` for 60s later, once the fetch resolves
+4. Timer loop handles subsequent refreshes
 
 ## User Experience
 
@@ -127,10 +137,13 @@ When a destination is selected:
 - No explicit loading spinner (intentional)
 - Data updates seamlessly
 - Previous data remains visible until new data arrives
+- A countdown ("Updating in `N` seconds") sits above the list, switching to "Updating
+  automatically..." while a fetch is outstanding
 
 **On error**:
-- Error message appears in red banner
-- Previous data cleared
+- Error message appears in a red banner above the list
+- Previous data stays on screen — the stores are only written on success, so a transient failure
+  leaves the last good board visible rather than blanking it
 - Refresh cycle continues (next attempt in 60s)
 
 ### Resource Conservation
@@ -147,10 +160,10 @@ When a destination is selected:
 ### Files Involved
 
 **src/App.svelte**:
-- Timer setup (line 11-15)
-- Visibility handling (line 49-62)
-- Reactive refresh trigger (line 71-75)
-- Initial load trigger (line 77-81)
+- Timer setup and `now` / `nextRefresh` / `isVisible` state
+- Visibility handling, registered in `onMount`
+- Reactive refresh trigger
+- Selection block that triggers the initial load
 
 **src/lib/departures.ts**:
 - `fetchDepartures()` function
@@ -159,27 +172,30 @@ When a destination is selected:
 
 ### Lifecycle Events
 
-**On Mount** (App.svelte:onMount):
+**On Mount**:
 ```typescript
 onMount(() => {
     // 1. Parse URL and load station
     reactToUrlChange();
 
     // 2. Set up browser history listener
-    window.addEventListener("popstate", reactToUrlChange);
+    window.addEventListener("popstate", () => {
+        reactToUrlChange();
+    });
 
-    // 3. Set up visibility listener
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    // 4. Start timer
+    // 3. Start timer
     setInterval(() => {
         now = new Date().getTime();
     }, 1000);
 
-    // 5. Initial visibility state
-    isVisible = !document.hidden;
+    // 4. Set up visibility listener
+    document.addEventListener("visibilitychange", () => { /* see above */ });
 });
 ```
+
+Neither listener nor the interval is torn down. That's acceptable in a single-component SPA that
+lives for the life of the page, but it does mean `onDestroy` cleanup is missing if the component
+is ever reused.
 
 ### Reactive Dependencies
 
@@ -208,25 +224,29 @@ $: {
 The refresh triggers parallel API calls:
 
 ```typescript
-// In departures.ts
+// In departures.ts (abridged - see the file for headers and response checks)
 export async function fetchDepartures(destination: string) {
-    try {
-        // Parallel fetch for both endpoints
-        const [journeysResponse, departuresResponse] = await Promise.all([
-            fetch(`https://api.euston.wtf/journeys/EUS/${destination}`),
-            fetch(`https://api.euston.wtf/departures/EUS`)
-        ]);
+    if (destination !== "") {
+        try {
+            // Parallel fetch for both endpoints
+            const [journeysResponse, platformsResponse] = await Promise.all([
+                fetch(`https://api.euston.wtf/journeys/EUS/${destination}`, { headers: { Accept: "application/json" } }),
+                fetch(`https://api.euston.wtf/departures/EUS`, { headers: { Accept: "application/json" } })
+            ]);
 
-        // Process responses
-        const journeysData = await journeysResponse.json();
-        const departuresData = await departuresResponse.json();
+            // Both must be ok, or neither store is touched
+            const data = await journeysResponse.json();
+            const platformsData = await platformsResponse.json();
 
-        // Update stores
-        departures.set(journeysData);
-        departuresByPlatform.set(departuresData.departuresByPlatform);
-    } catch (error) {
-        // Error handling
-        lastError.set(`Failed to load: ${error}`);
+            // Overdue trains stay listed; only the API knows what has actually left.
+            data.journeys = data.journeys.filter((journey: Journey) => !journey.isDeparted);
+
+            departures.set(data);
+            departuresByPlatform.set(platformsData.departuresByPlatform);
+            lastError.set(null);
+        } catch (error) {
+            lastError.set("Unable to retrieve data from backend. Please refresh or try again later.");
+        }
     }
 }
 ```
@@ -270,12 +290,12 @@ export async function fetchDepartures(destination: string) {
 **Event listeners**:
 - Only 2 listeners registered
 - No memory leaks (standard browser events)
-- Cleaned up on component unmount (automatic in Svelte)
+- Registered manually on `window` / `document`, so Svelte does *not* remove them on unmount
 
 **Timer cleanup**:
 - `setInterval` continues until page unload
-- Acceptable for SPA (no memory leak)
-- Could add cleanup in `onDestroy` but unnecessary
+- Acceptable for this SPA (the component never unmounts)
+- Could add cleanup in `onDestroy` but unnecessary today
 
 ## Browser Compatibility
 
@@ -288,8 +308,8 @@ export async function fetchDepartures(destination: string) {
 - ✅ Edge (all versions)
 
 **Fallback behavior**:
-- If API unavailable: `document.hidden` would be `undefined`
-- Would cause `isVisible = true` always
+- If the API is unavailable, `visibilitychange` never fires and `isVisible` stays at its
+  initial `true`
 - Refresh would never pause
 - Acceptable degradation
 
@@ -334,20 +354,21 @@ export async function fetchDepartures(destination: string) {
 
 ```typescript
 try {
-    // API calls
+    // API calls, then store writes
 } catch (error) {
-    lastError.set(`Failed to load: ${error}`);
-    departures.set(null);
+    console.error("There has been a problem with your fetch operation:", error);
+    lastError.set("Unable to retrieve data from backend. Please refresh or try again later.");
 }
-// nextRefresh still set → Will retry in 60s
+// doRefresh()'s .then() still runs → will retry in 60s
 ```
 
 **Failure behavior**:
-1. Error displayed to user
-2. Previous data cleared
+1. Generic error message displayed to the user; the underlying error goes to the console
+2. Previous data left on screen — the stores are written only after both responses parse
 3. Refresh timer continues
 4. Next refresh in 60s will retry
-5. No exponential backoff (simple by design)
+5. No exponential backoff (simple by design), so a sustained outage means one request a minute
+   per open tab
 
 ### Time Synchronization
 

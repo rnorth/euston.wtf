@@ -32,7 +32,7 @@ Trains flagged `isDeparted` are skipped when looking for the next departure. The
 endpoint keeps them and reports their *actual* departure time, so an already-departed service
 would otherwise be picked as a conflict for a platform it has long since left.
 
-The 5-minute threshold represents tight but realistic turnaround time for Euston's platform reuse patterns.
+The 10-minute threshold represents tight but realistic turnaround time for Euston's platform reuse patterns.
 
 ### What You See
 
@@ -157,7 +157,7 @@ The validation handles these scenarios correctly:
 | No platform assigned | No warning (neutral) |
 | No departures data available | No warning (fail safe) |
 | Same serviceUid match | No warning (it's the same train) |
-| Next departure >5 mins later | No warning (normal platform turnover) |
+| Next departure >10 mins later | No warning (normal platform turnover) |
 | No next departure from platform | No warning (confident) |
 | destinationDescription is null | Falls back to TIPLOC code |
 
@@ -178,7 +178,7 @@ The validation handles these scenarios correctly:
 ## Limitations
 
 1. **Depends on schedule accuracy**: Warnings only as good as the underlying RTT data
-2. **5-minute threshold is fixed**: Not configurable (by design, to avoid complexity)
+2. **10-minute threshold is fixed**: Not configurable (by design, to avoid complexity)
 3. **No historical accuracy tracking**: Doesn't learn from past platform assignments
 4. **Real-time only**: Doesn't predict future platform changes
 

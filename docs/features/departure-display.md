@@ -29,26 +29,26 @@ is late leaving is exactly when you most want to see it.
 
 ### Data Structure
 
-Each journey contains:
+The fields this component reads (see `src/lib/departures.ts` for the full interface — every
+field is a non-nullable `string`, `number` or `boolean`):
 
 ```typescript
 interface Journey {
-    serviceUid: string;           // Unique identifier
-    departureTime: string;        // HH:MM format
+    serviceUid: string;             // Unique identifier, used as the each-block key
+    departureTime: string;          // HH:MM, expected
+    scheduledDepartureTime: string; // HH:MM, as timetabled
     isCancelled: boolean;
     isDelayed: boolean;
-    isDeparted: boolean;        // actual departure reported - definitely left
-    isOverdue: boolean;         // past its time with no report - may still be here
+    isDeparted: boolean;            // actual departure reported - definitely left
+    isOverdue: boolean;             // past its time with no report - may still be here
     isPlatformChanged: boolean;
-    platform: string | null;
-    platformConfirmed: boolean;
-    scheduledDepartureTime: string | null;
-    serviceLocation: string;      // e.g., "AT_PLAT", "APPR_PLAT", "DEP_READY"
-    serviceType: string;         // e.g., "train", "bus"
-    destination: string;          // TIPLOC code
+    isPlatformConfirmed: boolean;
+    platform: string;
+    serviceLocation: string;        // e.g., "AT_PLAT", "APPR_PLAT", "DEP_READY"
+    serviceType: string;            // e.g., "train", "bus"
+    destination: string;            // TIPLOC code
     destinationDescription: string; // Human-readable name
-    runDate: string;             // YYYY-MM-DD
-    cancelReasonShortText: string; // Cancel reason
+    cancelReasonShortText: string;  // Cancel reason, may be empty
 }
 ```
 
@@ -125,10 +125,9 @@ Cancelled (with reason if available)
 ```
 
 **Visual treatment**:
-- Red background/border (`.is-danger`)
-- Red "Cancelled" tag with hover tooltip showing reason
-- No platform information shown
-- Entire message box has danger styling
+- Red background/border (`.is-danger`) on the whole row
+- Red "Cancelled" tag with hover tooltip showing the reason, when the API supplies one
+- No platform information shown — the platform column is suppressed entirely
 
 ### Delayed Journey
 
@@ -189,7 +188,7 @@ At platform
 
 ### Pagination
 
-**Default view**: First 5 journeys + last journey
+**Default view**: first 5 journeys + the last one, shown when there are more than 5 in total
 
 ```
 Journey 1
@@ -197,23 +196,24 @@ Journey 2
 Journey 3
 Journey 4
 Journey 5
-...  [Show all departures button]
-Journey N (last train, faded styling)
+[ ... ]              ← button, tooltip "Show more"
+Journey N (tagged "Last train!")
 ```
 
-**Expanded view**: All journeys
+**Expanded view**: all journeys, with the final one still rendered separately
 
 ```
 Journey 1
 Journey 2
 ...
-Journey N (last train, faded styling)
+Journey N (tagged "Last train!")
 ```
 
-**Last Train Styling**:
-- Lighter background (`rgb(250 250 250)`)
-- Serves as visual anchor
-- Always visible even when collapsed
+**Last Train Treatment**:
+- The `isLastTrain` prop adds a blue "Last train!" tag — there is no distinct background or
+  faded styling
+- Always visible even when collapsed, so you can see the last train without expanding
+- An overdue last train keeps the tag until the API retires it, which is correct: it hasn't left
 
 ## Technical Implementation
 
@@ -236,21 +236,23 @@ let showConflictDetails = $state(false);
 
 ### Conditional Rendering
 
-**Cancelled Status** (JourneyPane.svelte:14-23):
+**Row Styling** — one function drives the whole row's colour:
+```typescript
+function rowClass() {
+    if (journey.isCancelled) return "is-danger";
+    if (isOverdue || journey.isDelayed) return "is-warning";
+    return "";
+}
+```
+
+**Cancelled Status** — a tag, not a banner; the row colour carries the weight:
 ```svelte
 {#if journey.isCancelled}
-    <div class="message is-danger">
-        <div class="message-header">
-            <p>CANCELLED</p>
-        </div>
-        <div class="message-body">
-            This service is cancelled.
-        </div>
-    </div>
+    <span class="tag is-danger" title="{journey.cancelReasonShortText}">Cancelled</span>
 {/if}
 ```
 
-**Platform Display** (JourneyPane.svelte:39-46):
+**Platform Display**:
 ```svelte
 {#if !journey.isCancelled}
     {#if journey.isPlatformConfirmed}
@@ -278,7 +280,7 @@ time is void there is nothing useful to show alongside it:
 
 ### Status Indicators
 
-**Service Location** (JourneyPane.svelte:70-81):
+**Service Location**:
 ```svelte
 {#if journey.serviceLocation.startsWith("APPR")}
     <span class="tag is-info">Approaching</span>
@@ -307,14 +309,14 @@ time is void there is nothing useful to show alongside it:
 let isOverdue = $derived(journey.isOverdue && !journey.isCancelled);
 ```
 
-**Platform Changed Tag** (JourneyPane.svelte:54-56):
+**Platform Changed Tag**:
 ```svelte
 {#if journey.isPlatformChanged}
     <span class="tag is-warning">Platform has changed</span>
 {/if}
 ```
 
-**Service Type** (JourneyPane.svelte:66-68):
+**Service Type**:
 ```svelte
 {#if journey.serviceType !== "train"}
     <span class="tag is-danger">{titlecase(journey.serviceType)}</span>
@@ -323,7 +325,7 @@ let isOverdue = $derived(journey.isOverdue && !journey.isCancelled);
 
 ### Styling
 
-**Scoped CSS** (JourneyPane.svelte:109-150):
+**Scoped CSS**:
 ```css
 .message-body {
     display: grid;
@@ -361,46 +363,43 @@ let isOverdue = $derived(journey.isOverdue && !journey.isCancelled);
 
 ### List Management in App.svelte
 
-**Journey Filtering** (App.svelte:130-162):
+**Journey List** — two branches rather than one parameterised slice:
 ```svelte
-{#if $departures && $departures.journeys.length > 0}
-    <section class="section">
-        {#each $departures.journeys.slice(0, hideLaterJourneys ? 5 : $departures.journeys.length - 1) as journey (journey.serviceUid)}
-            <div transition:slide={{ duration: 500 }}>
-                <JourneyPane {journey} />
-            </div>
-        {/each}
-
-        {#if hideLaterJourneys && $departures.journeys.length > 6}
-            <div class="ellipsis">
-                <button
-                    class="button is-text"
-                    on:click={() => (hideLaterJourneys = false)}
-                >
-                    ... (Show all departures)
-                </button>
-            </div>
-        {/if}
-
-        <!-- Always show last train -->
-        {#if $departures.journeys.length > 0}
-            <div transition:slide={{ duration: 500 }}>
-                <JourneyPane
-                    journey={$departures.journeys[$departures.journeys.length - 1]}
-                    isLastTrain={true}
-                />
-            </div>
-        {/if}
-    </section>
+{#if $departures.journeys.length > 5 && hideLaterJourneys}
+    {#each $departures.journeys.slice(0, 5) as journey (journey.serviceUid)}
+        <div out:slide={{duration: 500}}>
+            <JourneyPane {journey} />
+        </div>
+    {/each}
+    <div class="has-text-centered">
+        <button class="button is-centered ellipsis" title="Show more"
+                on:click={() => hideLaterJourneys=false}>...
+        </button>
+    </div>
+    <JourneyPane
+            journey={$departures.journeys[$departures.journeys.length - 1]}
+            isLastTrain={true}
+    />
+{:else}
+    {#each $departures.journeys.slice(0, -1) as journey (journey.serviceUid)}
+        <div out:slide={{duration: 500}}>
+            <JourneyPane {journey} />
+        </div>
+    {/each}
+    <JourneyPane
+            journey={$departures.journeys[$departures.journeys.length - 1]}
+            isLastTrain={true}
+    />
 {/if}
 ```
 
 **Key Logic**:
-- Slice first 5 when collapsed
-- Show "..." button if >6 journeys
-- Always display last journey with special styling
-- Use `serviceUid` as key for list items
-- 500ms slide transition on removal
+- Collapse only when there are more than 5 journeys
+- The last journey is always rendered separately with `isLastTrain`, in both branches — with
+  exactly 6 journeys the collapsed view therefore shows 5 + the 6th, and the "..." button
+  expands to reveal nothing new
+- `serviceUid` keys the each block
+- `out:slide` only — journeys animate away when they leave, but appear instantly
 
 ## Performance
 
@@ -426,34 +425,37 @@ let isOverdue = $derived(journey.isOverdue && !journey.isCancelled);
 
 ### Animation Performance
 
-- **Slide transitions**: Hardware-accelerated
-- **500ms duration**: Smooth but not sluggish
-- **No layout thrashing**: Grid stays stable
+- **Slide transitions**: animate `height`, so they do force layout — fine at this list size
+- **500ms duration**: smooth but not sluggish
+- **Outro only**: nothing animates in, so a refresh doesn't visibly churn the list
 
 ## Accessibility
 
 ### Semantic HTML
 
+Each journey is a Bulma `<article class="message">` containing a three-column grid of plain
+`<div>`s. There is no finer-grained semantic markup — no `<time>` elements, no ARIA roles on the
+row itself.
+
 ```html
-<div class="journey" role="article">
-    <div class="platform">
-        <strong>Platform 8</strong>
+<article class="message is-warning">
+    <div class="message-body">
+        <div><span class="muted">18:30</span></div>
+        <div><p class="platform confirmed">Platform 12</p>...</div>
+        <div><span class="tag is-warning">Departure delayed</span></div>
     </div>
-    <div class="times">
-        <time>18:05</time> → <time>20:30</time>
-    </div>
-    <div class="status">
-        <span class="tag">At platform</span>
-    </div>
-</div>
+</article>
 ```
 
 ### Screen Reader Support
 
-- **Strikethrough times**: `<s>` tags properly announced
-- **Status tags**: Text content is semantic
-- **Cancelled messages**: Wrapped in `.message` with proper heading
-- **Platform confirmations**: `<strong>` for confirmed platforms
+- **Status tags**: text content is meaningful when read aloud
+- **Strikethrough and muted times**: styled with CSS only, so the *visual* distinction between a
+  superseded time and a live one is not announced at all. A known gap
+- **Platform state**: conveyed by font weight plus a "(Confirmed)"/"(Scheduled)" text label, so
+  the label carries the meaning even when weight isn't perceivable
+- **Tooltips**: `title` attributes are inconsistently surfaced by screen readers; the cancel
+  reason and the overdue explanation are effectively sighted-only
 
 ### Keyboard Navigation
 
@@ -475,26 +477,33 @@ let isOverdue = $derived(journey.isOverdue && !journey.isCancelled);
 ```svelte
 {:else if $departures && $departures.journeys.length === 0}
     <section class="section">
-        <div class="message is-info">
-            <div class="message-body has-text-centered">
-                <strong>No upcoming departures</strong>
-                <br />
-                There are no trains to this destination in the next few hours.
+        <article class="message is-info">
+            <div class="message-header">
+                <p>No departures found today</p>
+                <button class="delete" aria-label="delete"></button>
             </div>
-        </div>
+            <div class="message-body">
+                No departures to {selectedDestination?.station} ({selectedDestination?.code}) could be found
+                today.
+                Consult official sources for travel information.
+            </div>
+        </article>
     </section>
 {/if}
 ```
+
+The header carries a Bulma `delete` button that is decorative — nothing is wired to it.
 
 ### Missing Data Fields
 
 | Field Missing | Behavior |
 |---------------|----------|
-| `platform` is `null` | Platform section not displayed |
+| `platform` is empty | Renders "Platform" with nothing after it — not guarded against |
 | `serviceLocation` doesn't match known codes | No location tag rendered |
-| `scheduledDepartureTime` is `null` | Shows only departure time (no strikethrough) |
-| `destinationDescription` is `null` | Falls back to TIPLOC code (in platform warnings) |
-| `cancelReasonShortText` is empty | Cancelled tag shows without tooltip |
+| `scheduledDepartureTime` is empty | Only reached when `isDelayed`, so shows a blank strikethrough |
+| `destinationDescription` is empty | Falls back to the TIPLOC code (in platform warnings) |
+| `cancelReasonShortText` is empty | Cancelled tag shows with an empty tooltip |
+| `departuresByPlatform` missing entirely | Platform validation degrades to confident, no warnings |
 
 ### Extreme Data
 
@@ -502,8 +511,8 @@ let isOverdue = $derived(journey.isOverdue && !journey.isCancelled);
 |----------|----------|
 | 50+ journeys | Paginated (show 5 + last) |
 | Long station names | Text wraps within grid cell |
-| Very short list (<5) | No pagination button shown |
-| Single journey | Works fine, last train styling applied |
+| Very short list (≤5) | No pagination button shown |
+| Single journey | Rendered once, as the last train |
 
 ## Limitations
 
@@ -559,19 +568,17 @@ Potential improvements (not currently planned):
 2. CSS is loading (Bulma CDN)
 3. Tags are not being stripped by ad blockers
 
-### Last train styling incorrect
+### "Last train!" tag missing or on the wrong row
 
 **Check**:
-1. `isLastTrain` prop is being passed
-2. CSS class `.is-last-train` is applied
-3. Array indexing is correct
+1. `isLastTrain` prop is being passed on the final `JourneyPane`
+2. Array indexing is correct (`journeys.length - 1`)
 
-### "Show all" button not appearing
+### "..." button not appearing
 
 **Possible causes**:
-- Fewer than 6 journeys total
-- `hideLaterJourneys` state not initialized
-- Conditional logic error
+- 5 or fewer journeys total
+- `hideLaterJourneys` was left `false` after a previous expansion (it resets on station change)
 
 ### Times show as "undefined"
 

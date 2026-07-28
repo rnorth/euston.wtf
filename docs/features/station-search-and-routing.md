@@ -35,12 +35,12 @@ Stations are alphabetically sorted by name for optimal autocomplete UX.
 **Library**: `simple-svelte-autocomplete`
 
 **Configuration**:
-```typescript
+```svelte
 <AutoComplete
     items={stations}
-    labelFunction={(station: Station) => station.station}
+    labelFunction={(item: Station) => item.station + " (" + item.code + ")"}
     bind:selectedItem={selectedDestination}
-    placeholder="Choose a destination station..."
+    placeholder="Choose your destination station"
 />
 ```
 
@@ -68,43 +68,54 @@ The app implements **custom client-side routing** without a framework:
 
 #### Routing Implementation
 
-**On Station Selection** (src/App.svelte:84):
+**On Station Selection** — there is no selection handler. A reactive block watches
+`selectedDestination` and does everything a selection implies:
+
 ```typescript
-function selectDestination(station: Station | null) {
-    if (station !== null) {
-        window.history.pushState({}, "", `/${station.code}`);
-        selectedDestination = station;
+$: {
+    if (selectedDestination !== null) {
+        destinationCode = selectedDestination.code;
+        hideLaterJourneys = true;
         doRefresh();
+        departures.set(null);
+
+        // use pushState to avoid page reload, but only when user selects from dropdown
+        // (not when reacting to URL changes from initial load or browser back/forward)
+        if (!isNavigatingFromUrl) {
+            window.history.pushState(null, "", `/${selectedDestination.code}`);
+        }
     }
 }
 ```
 
-**On Page Load / Back Button** (src/App.svelte:19-37):
+The `isNavigatingFromUrl` guard matters: without it, `reactToUrlChange()` setting
+`selectedDestination` would push a *new* history entry, so the back button would never escape
+the page it just returned to.
+
+**On Page Load / Back Button**:
 ```typescript
 function reactToUrlChange() {
-    // Try path-based routing first
-    const match = window.location.pathname.match(/^\/([A-Z]+)$/);
-    if (match) {
-        const code = match[1];
-        const station = stations.find(s => s.code === code);
+    isNavigatingFromUrl = true;
+    if (window.location.pathname.length > 1) {
+        // path part of the URL is the destination code, if set
+        const code = window.location.pathname.slice(1);
+        const station = stations.find((s) => s.code === code);
         if (station) {
             selectedDestination = station;
-            doRefresh();
-            return;
         }
-    }
-
-    // Fallback to hash-based routing
-    const hash = window.location.hash.replace('#', '');
-    if (hash) {
-        const station = stations.find(s => s.code === hash);
+    } else if (window.location.hash) {
+        // hash part of the URL is the destination code, if set
+        const code = window.location.hash.slice(1);
+        const station = stations.find((s) => s.code === code);
         if (station) {
             selectedDestination = station;
-            doRefresh();
         }
     }
+    isNavigatingFromUrl = false;
 }
 ```
+
+Note it only *sets* the station; the reactive block above picks up the change and fetches.
 
 **Browser History Integration**:
 ```typescript
@@ -121,13 +132,11 @@ onMount(() => {
 let selectedDestination: Station | null = null;
 ```
 
-**Reactive Document Title**:
+**Reactive Document Title** — set on selection only; it is never reset to the default:
 ```typescript
 $: {
     if (selectedDestination !== null) {
-        document.title = `Departures to ${selectedDestination?.station}`;
-    } else {
-        document.title = "euston.wtf";
+        document.title = `Departures to ${selectedDestination?.station} (${selectedDestination?.code}) - euston.wtf`;
     }
 }
 ```
@@ -139,11 +148,12 @@ $: {
 1. **User types** in autocomplete → Stations filter in real-time
 2. **User selects station** → URL updates to `/CODE`, document title changes
 3. **API fetch triggered** → Departure data loads
-4. **User clicks back** → URL reverts, station deselects, popstate fires
+4. **User clicks back** → popstate fires, URL reverts; the previous station is re-selected if the
+   URL names one, but going back to `/` leaves the current station displayed
 
 ### Visual Feedback
 
-- **Placeholder text**: "Choose a destination station..."
+- **Placeholder text**: "Choose your destination station"
 - **Dropdown appearance**: Bulma-styled input with dropdown list
 - **No selection**: Shows title and autocomplete only
 - **Selection made**: Shows departures section below
@@ -167,8 +177,9 @@ $: {
 | Visit `/XYZ` (invalid code) | Shows autocomplete, no selection |
 | Visit `/man` (lowercase) | No match (case-sensitive), no selection |
 | Visit `/` | Root page, no selection |
-| Hash `#MAN` in URL | Reads and applies, then normalizes to path |
-| Multiple slashes `/MAN/extra` | No match (regex is strict) |
+| Hash `#MAN` in URL | Read and applied; the URL is left as-is, not rewritten to a path |
+| Multiple slashes `/MAN/extra` | Code parses as `MAN/extra`, which matches no station |
+| Click back to `/` | URL reverts, but `selectedDestination` stays set — departures remain on screen |
 
 ## Technical Implementation
 
@@ -179,11 +190,11 @@ $: {
    - `Station` interface definition
    - Exported array of 57 stations
 
-2. **src/App.svelte** (206 lines)
-   - AutoComplete component integration (lines 102-107)
-   - URL parsing logic (lines 19-37)
-   - Station selection handler (line 84)
-   - Browser history event listeners (onMount)
+2. **src/App.svelte** (205 lines)
+   - AutoComplete component integration
+   - `reactToUrlChange()` URL parsing
+   - Reactive block that pushes history and triggers a fetch on selection
+   - `popstate` listener registered in `onMount`
 
 3. **src/lib/simple-svelte-autocomplete.d.ts**
    - TypeScript type definitions for autocomplete component
@@ -200,14 +211,15 @@ $: {
 - No nested routes (not needed)
 - No route guards (not needed)
 - No lazy loading (app is tiny)
-- Manual URL parsing (17 lines of code)
+- Manual URL parsing (~18 lines of code)
 
 ### Code Validation
 
 **Station Code Format**:
 - **Pattern**: 2-4 uppercase letters (e.g., `MAN`, `EUS`, `BHM`)
-- **Validation**: Regex `/^\/([A-Z]+)$/` matches path
-- **Lookup**: `stations.find(s => s.code === code)`
+- **Validation**: none — the whole path after the leading `/` is taken as the code
+- **Lookup**: `stations.find(s => s.code === code)`; anything not in the list is ignored, which
+  is the only validation there is
 
 **Case Sensitivity**:
 - Station codes are uppercase
@@ -229,7 +241,7 @@ $: {
 
 ### Routing Performance
 - **URL update**: <1ms (synchronous `pushState()`)
-- **URL parsing**: <1ms (single regex match + array find)
+- **URL parsing**: <1ms (string slice + array find)
 - **No page reload**: Instant navigation feel
 - **History state**: Minimal memory footprint
 
@@ -319,7 +331,7 @@ Potential improvements (not currently planned):
 **Check**:
 1. That JavaScript is enabled
 2. Browser supports `pushState` (IE10+)
-3. Console for errors in `selectDestination()`
+3. Console for errors in the selection reactive block
 
 ### Back button doesn't work
 
@@ -347,5 +359,5 @@ Potential improvements (not currently planned):
 ---
 
 **Feature Status**: ✅ Active (Core Feature)
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-07-28
 **Version**: 1.0
