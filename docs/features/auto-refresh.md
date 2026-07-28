@@ -489,12 +489,11 @@ Potential improvements (not currently planned):
 ## Related Documentation
 
 - **CLAUDE.md** - Complete codebase guide (refresh section)
-- **departure-display.md** - How data is rendered
-- **time-filtering.md** - How old trains are filtered
+- **departure-display.md** - How data is rendered, and which trains are shown
 - **Page Visibility API** - MDN Web Docs
 
 ---
 
 **Feature Status**: ✅ Active (Core Feature)
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-07-28
 **Version**: 1.0

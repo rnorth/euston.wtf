@@ -28,6 +28,10 @@ For each journey with an unconfirmed platform, the app checks:
 3. **Is there a different train departing from that platform within 10 minutes?** → If yes, show warning (low confidence)
 4. **Is the next departure from that platform more than 10 minutes later?** → If yes, no warning (enough time for platform turnover)
 
+Trains flagged `isDeparted` are skipped when looking for the next departure. The `/departures/EUS`
+endpoint keeps them and reports their *actual* departure time, so an already-departed service
+would otherwise be picked as a conflict for a platform it has long since left.
+
 The 5-minute threshold represents tight but realistic turnaround time for Euston's platform reuse patterns.
 
 ### What You See
@@ -218,5 +222,5 @@ Ensure JavaScript is enabled and check browser console for errors.
 ---
 
 **Feature Status**: ✅ Active
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-07-28
 **Version**: 1.0

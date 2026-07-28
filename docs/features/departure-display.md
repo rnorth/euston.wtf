@@ -9,11 +9,23 @@ The departure display feature is the core visualization component of euston.wtf,
 Displays each train journey with:
 - **Departure time** (scheduled and actual if delayed)
 - **Platform assignment** (confirmed or scheduled)
-- **Service status** (on time, delayed, cancelled, platform changed)
+- **Service status** (on time, delayed, overdue, cancelled, platform changed)
 - **Service location** (at platform, approaching, preparing to depart)
 - **Visual indicators** for quick status recognition
 
 ## How It Works
+
+### Which Trains Are Shown
+
+The API decides what has left, not the browser clock. Each journey carries two flags:
+
+- **`isDeparted`** - the origin reported an actual departure. The train has definitely gone.
+- **`isOverdue`** - the expected departure time has passed with no such report. The train may
+  still be sitting at the platform; Realtime Trains simply doesn't know yet.
+
+The client drops only `isDeparted` journeys (`departures.ts`). Overdue trains stay on the board
+with a "Departure delayed" label until the API retires them after its grace period — a train that
+is late leaving is exactly when you most want to see it.
 
 ### Data Structure
 
@@ -25,6 +37,8 @@ interface Journey {
     departureTime: string;        // HH:MM format
     isCancelled: boolean;
     isDelayed: boolean;
+    isDeparted: boolean;        // actual departure reported - definitely left
+    isOverdue: boolean;         // past its time with no report - may still be here
     isPlatformChanged: boolean;
     platform: string | null;
     platformConfirmed: boolean;
@@ -45,7 +59,7 @@ interface Journey {
 - Handles pagination (show 5 vs. all)
 - Coordinates with data stores
 
-**Individual Journey**: `src/lib/JourneyPane.svelte` (104 lines)
+**Individual Journey**: `src/lib/JourneyPane.svelte` (167 lines)
 - Renders single train departure
 - Three-column grid layout
 - Conditional status indicators
@@ -72,10 +86,12 @@ Each journey uses a **three-column grid**:
 - Platform state: Gray, dashed underline, cursor shows tooltip
 - Status tags: Small, colored badges
 - Strikethrough: Applied to scheduled time when delayed
+- Muted (60% opacity): Applied to the departure time when overdue — a struck-through time
+  reads as "gone", which is the opposite of what overdue means
 
 **Color Coding**:
 - **Red** (`.is-danger`): Cancelled journeys, bus replacement services
-- **Orange** (`.is-warning`): Delayed trains, platform changed
+- **Orange** (`.is-warning`): Delayed trains, overdue trains, platform changed
 - **Yellow** (`.is-warning`): Platform uncertain warnings
 - **Blue** (`.is-info`): Service location indicators (at platform, approaching, etc.)
 - **Gray**: Scheduled platform state labels
@@ -132,6 +148,27 @@ Approaching
 - Orange background/border (`.is-warning`)
 - Orange "Delayed" tag
 - Blue "Approaching" tag for service location
+
+### Overdue Journey
+
+```
+18:30 (dimmed)
+
+Platform 12
+(Confirmed)
+
+Departure delayed
+At platform
+```
+
+**Visual treatment**:
+- Departure time dimmed rather than struck through
+- Orange background/border (`.is-warning`)
+- Orange "Departure delayed" tag, with a tooltip explaining there has been no report from the
+  train and the departure boards are worth checking
+- Replaces the "Delayed" tag rather than appearing alongside it
+- A cancelled train is also flagged overdue by the API once its time passes; "Cancelled" wins,
+  and no overdue tag is shown
 
 ### Platform Changed
 
@@ -226,9 +263,12 @@ let showConflictDetails = $state(false);
 {/if}
 ```
 
-**Time Display with Delay** (JourneyPane.svelte:28-34):
+**Time Display** (JourneyPane.svelte) — overdue supersedes delayed, since once the expected
+time is void there is nothing useful to show alongside it:
 ```svelte
-{#if journey.isDelayed}
+{#if isOverdue}
+    <span class="muted">{journey.departureTime}</span>
+{:else if journey.isDelayed}
     <span>{journey.departureTime}</span>
     <span class="strikethrough">{journey.scheduledDepartureTime}</span>
 {:else}
@@ -253,11 +293,18 @@ let showConflictDetails = $state(false);
 {/if}
 ```
 
-**Delay Tag** (JourneyPane.svelte:62-64):
+**Delay Tags** (JourneyPane.svelte) — the `{:else if}` keeps a single amber tag on the row:
 ```svelte
-{#if journey.isDelayed}
+{#if isOverdue}
+    <span class="tag is-warning" title="...">Departure delayed</span>
+{:else if journey.isDelayed}
     <span class="tag is-warning">Delayed</span>
 {/if}
+```
+
+`isOverdue` is derived, not read straight from the journey:
+```typescript
+let isOverdue = $derived(journey.isOverdue && !journey.isCancelled);
 ```
 
 **Platform Changed Tag** (JourneyPane.svelte:54-56):
@@ -298,6 +345,10 @@ let showConflictDetails = $state(false);
 
 .strikethrough {
     text-decoration: line-through;
+}
+
+.muted {
+    opacity: 0.6;
 }
 ```
 
@@ -532,12 +583,12 @@ Potential improvements (not currently planned):
 ## Related Documentation
 
 - **CLAUDE.md** - Complete codebase guide (display section)
-- **platform-validation.md** - Platform uncertainty warnings
+- **platform-validation.md** - Platform uncertainty warnings (also filters on `isDeparted`)
 - **auto-refresh.md** - Data refresh mechanism
 - **Bulma Documentation** - CSS framework reference
 
 ---
 
 **Feature Status**: ✅ Active (Core Feature)
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-07-28
 **Version**: 1.0

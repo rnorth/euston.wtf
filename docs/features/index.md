@@ -1,7 +1,7 @@
 # euston.wtf - Feature Specification
 
 **Version**: 1.0
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-07-28
 **Status**: ✅ Active Production Application
 
 ## Project Overview
@@ -12,7 +12,7 @@
 
 - Display real-time departure information from London Euston to user-selected destinations
 - Auto-refresh data every 60 seconds to keep information current
-- Filter out past departures to show only relevant upcoming trains
+- Show only trains that haven't left yet, including ones running late off the platform
 - Warn users about uncertain platform assignments
 - Provide a fast, accessible, bookmarkable experience
 
@@ -53,17 +53,17 @@
 
 ```
 src/
-├── App.svelte              # Main application (206 lines)
+├── App.svelte              # Main application (205 lines)
 ├── main.ts                 # Entry point
 ├── app.css                 # Global styles
 └── lib/
-    ├── departures.ts       # Data fetching & stores (113 lines)
+    ├── departures.ts       # Data fetching & stores (188 lines)
     ├── stations.ts         # Static station data (67 lines, 57 stations)
-    ├── JourneyPane.svelte  # Journey display component (104 lines)
+    ├── JourneyPane.svelte  # Journey display component (167 lines)
     └── Title.svelte        # Animated header (52 lines)
 ```
 
-**Total codebase**: ~550 lines of application code (excluding configs)
+**Total codebase**: ~700 lines of application code (excluding configs)
 
 ## Core Functionality
 
@@ -88,7 +88,8 @@ The core visualization showing train departure information with status indicator
 - Departure times with delay indicators
 - Platform assignments (confirmed vs. scheduled)
 - Service location indicators (at platform, approaching, etc.)
-- Visual status tags (cancelled, delayed, platform changed)
+- Visual status tags (cancelled, delayed, departure delayed, platform changed)
+- Overdue trains kept on the board rather than dropped at their departure time
 - Pagination (first 5 + last train by default)
 
 **📄 [Detailed Specification →](./departure-display.md)**
@@ -106,20 +107,7 @@ Automatic data updates every 60 seconds with intelligent pause/resume based on t
 
 **📄 [Detailed Specification →](./auto-refresh.md)**
 
-### 4. Time Filtering
-
-Automatic removal of trains that have already departed, keeping the display current and actionable.
-
-**Key Features**:
-- Server-side filtering of past departures
-- String-based time comparison (HH:MM format)
-- Midnight crossover handling
-- Updates on every refresh cycle
-- Friendly message when no upcoming trains
-
-**📄 [Detailed Specification →](./time-filtering.md)**
-
-### 5. Platform Validation
+### 4. Platform Validation
 
 Cross-references unconfirmed platform assignments against station-wide departures to identify potentially incorrect platforms.
 
@@ -156,7 +144,7 @@ Cross-references unconfirmed platform assignments against station-wide departure
          ▼
 ┌──────────────────────────────────┐
 │  Server-Side Processing          │
-│  • Filter past departures        │
+│  • Flag departed / overdue       │
 │  • Parse times                   │
 │  • Structure response            │
 └────────┬─────────────────────────┘
@@ -206,6 +194,8 @@ interface Journey {
     isPlatformConfirmed: boolean;
     isCancelled: boolean;
     isDelayed: boolean;
+    isDeparted: boolean;               // actual departure reported
+    isOverdue: boolean;                // past its time, no report yet
     isPlatformChanged: boolean;
     serviceLocation: string;           // "AT_PLAT", "APPR_PLAT", etc.
     serviceType: string;               // "train", "bus"
@@ -428,7 +418,7 @@ When making changes, verify:
 - [ ] Auto-refresh triggers every 60s
 - [ ] Refresh pauses when tab hidden
 - [ ] Refresh resumes when tab visible
-- [ ] Past trains filtered out
+- [ ] Departed trains filtered out, overdue trains retained
 - [ ] Error messages display correctly
 - [ ] Status indicators show correctly
 - [ ] Last train styling distinct
@@ -444,7 +434,6 @@ When making changes, verify:
 - **[Station Search and Routing](./station-search-and-routing.md)** - Autocomplete search and lightweight URL routing
 - **[Departure Display](./departure-display.md)** - Journey visualization with status indicators
 - **[Auto-Refresh](./auto-refresh.md)** - 60-second refresh cycle with visibility detection
-- **[Time Filtering](./time-filtering.md)** - Automatic removal of past departures
 - **[Platform Validation](./platform-validation.md)** - Warning system for uncertain platforms
 
 ### Development Documentation
