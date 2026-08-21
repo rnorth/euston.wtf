@@ -1,6 +1,7 @@
 <script lang="ts">
     import { slide } from "svelte/transition";
     import { departuresByPlatform, validatePlatform, type Journey } from "./departures";
+    import { historyByService, minObservations } from "./history";
 
     interface Props {
         journey: Journey;
@@ -16,6 +17,24 @@
     // A cancelled train never reports an actual departure, so the API flags it overdue
     // once its time passes - but "cancelled" is the only status worth showing.
     let isOverdue = $derived(journey.isOverdue && !journey.isCancelled);
+
+    // Historical performance for this service, keyed by the same serviceUid the
+    // board loops on. Services are re-identified at the May/December timetable
+    // recast, so a fresh UID simply has no history yet and nothing is shown.
+    let history = $derived($historyByService?.get(journey.serviceUid) ?? null);
+
+    let showHistory = $derived(
+        history !== null && history.departuresObserved >= $minObservations
+    );
+
+    // A sub-minute early average is a single train pulling out a minute early, not
+    // a pattern - and for a passenger it reads as on time anyway.
+    let delaySummary = $derived.by(() => {
+        if (history === null) return "";
+        const mean = Math.round(history.meanDelayMinutes);
+        if (mean >= 1) return `Usually ~${mean} min late`;
+        return "Usually on time";
+    });
 
     function rowClass() {
         if (journey.isCancelled) return "is-danger";
@@ -38,6 +57,19 @@
                 <span class="strikethrough">{journey.scheduledDepartureTime}</span>
             {:else}
                 {journey.departureTime}
+            {/if}
+
+            {#if showHistory && history}
+                <p class="history"
+                   title="Based on {history.departuresObserved} observed departures in the last 90 days">
+                    {delaySummary}
+                    {#if history.usualPlatform && history.usualPlatform !== history.plannedPlatform}
+                        · usually platform {history.usualPlatform}
+                    {/if}
+                    {#if history.cancellations > 0}
+                        · cancelled {history.cancellations}×
+                    {/if}
+                </p>
             {/if}
         </div>
 
@@ -143,6 +175,12 @@
 
     .strikethrough {
         text-decoration: line-through;
+    }
+
+    .history {
+        margin: 0.25rem 0 0;
+        font-size: 0.8rem;
+        color: gray;
     }
 
     /* Overdue: the time has passed but the train may still be here, so dim it

@@ -2,6 +2,7 @@
     import AutoComplete from "simple-svelte-autocomplete";
     import {slide} from "svelte/transition";
     import {departures, lastError, fetchDepartures} from "./lib/departures";
+    import {fetchHistory} from "./lib/history";
     import JourneyPane from "./lib/JourneyPane.svelte";
     import Title from "./lib/Title.svelte";
     import {onMount} from "svelte";
@@ -77,6 +78,9 @@
             destinationCode = selectedDestination.code;
             hideLaterJourneys = true;
             doRefresh();
+            // Per origin, not per destination, and cached for the page - so this is
+            // one fetch no matter how many destinations the visitor switches through.
+            fetchHistory("EUS");
             departures.set(null);
 
             // use pushState to avoid page reload, but only when user selects from dropdown
