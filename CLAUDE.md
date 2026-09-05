@@ -28,15 +28,16 @@ This document provides comprehensive guidance for AI assistants working with the
 ```
 /home/user/euston.wtf/
 ├── src/
-│   ├── App.svelte              # Main application component (206 lines)
+│   ├── App.svelte              # Main application component
 │   ├── main.ts                 # Application entry point
 │   ├── app.css                 # Global styles
-│   ├── vite-env.d.ts          # Vite type definitions
+│   ├── vite-env.d.ts           # Vite type definitions
 │   └── lib/
-│       ├── departures.ts       # Data fetching and type definitions (113 lines)
-│       ├── stations.ts         # Static station data (67 lines, 57 stations)
-│       ├── JourneyPane.svelte  # Single journey display component (104 lines)
-│       ├── Title.svelte        # Animated header component (52 lines)
+│       ├── departures.ts       # Data fetching, types, display helpers
+│       ├── history.ts          # Historical punctuality per service
+│       ├── stations.ts         # Static station data
+│       ├── JourneyPane.svelte  # Single journey display component
+│       ├── Title.svelte        # Animated header component
 │       └── simple-svelte-autocomplete.d.ts  # Type definitions
 ├── public/                     # Static assets (favicons, manifest)
 ├── index.html                  # HTML entry point
@@ -276,33 +277,36 @@ $: {
 
 **Key Files**: App.svelte:14-15, 49-62, 71-75
 
-### Time Filtering
+### Departure Filtering
 
-Departures are filtered to show only **future trains**:
+The frontend does **not** filter on the clock. It drops only what the API says has actually
+gone:
 
 ```typescript
-// Filter out trains that have already departed
-data.journeys = data.journeys.filter((journey: Journey) => {
-    const nowHHMM = new Date().toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-
-    // Show if departure time is in future OR it's an early tomorrow train
-    return journey.departureTime > nowHHMM || journey.runDate !== todayDate;
-});
+// Overdue trains stay listed; only the API knows what has actually left.
+data.journeys = data.journeys.filter((journey: Journey) => !journey.isDeparted);
 ```
 
-**Key File**: departures.ts:91-99
+A train past its time with no departure report may still be sitting at the platform, so
+removing it by comparing against the clock hid trains that were still catchable. The API
+owns that judgement: it reports `isDeparted` for a confirmed departure and `isOverdue` for
+a time that has passed with no report, and drops a service entirely once a grace period
+expires. The window it returns runs from an hour ago to 03:00 the next morning, so
+post-midnight services are included.
+
+**Key File**: departures.ts (`fetchDepartures`)
 
 ### Journey Display Logic
 
 - **First 5 journeys** shown by default
 - **"..." button** to expand and show all
-- **Last journey** always displayed (with `isLastTrain={true}` prop)
+- **Pinned rows** stay visible below the "...": the last catchable train, and the final
+  departure when that is something else (a replacement bus, or a cancelled service). Without
+  the first of these the "Last train" badge would hide in the collapsed middle of the list
+- **`isLastTrain`** is not "the final row" - it is the row `lastCatchableTrainUid` picks
 - **Slide transitions** on removal (500ms duration)
 
-**Key File**: App.svelte:130-162
+**Key File**: App.svelte (the `{#if ...journeys.length > 5 && hideLaterJourneys}` block)
 
 ## Common Tasks for AI Assistants
 
@@ -387,12 +391,18 @@ function foo(x: MyType): string { return x.bar; } // ✅ Explicit types
 
 ### Time Comparison Edge Cases
 
-The time filtering logic uses **string comparison** for HH:MM times:
-- Works because format is always "HH:MM" (24-hour)
-- Handles midnight crossover via `runDate` check
-- Edge case: Trains departing between 00:00-00:59 tomorrow
+HH:MM **string comparison** no longer decides what is displayed - see Departure Filtering -
+but it still survives in `validatePlatform`, which compares departure times to find the next
+service off the same platform:
+- Works because the format is always "HH:MM" (24-hour)
+- Does **not** handle midnight crossover: "00:09" sorts before "23:58", so a comparison
+  across midnight inverts. `validatePlatform` gets away with it because it only looks for a
+  conflict within 10 minutes, and a wrong answer there costs a platform warning, not a
+  missed train
+- Anything new that reasons about time across midnight needs `runDate` too, or the ISO
+  datetimes the API already carries
 
-**Key File**: departures.ts:92-98
+**Key File**: departures.ts (`validatePlatform`, `parseTime`)
 
 ### API Error Handling
 
@@ -472,7 +482,7 @@ Checks:
 
 ## File-by-File Reference
 
-### src/App.svelte (206 lines)
+### src/App.svelte
 **Purpose**: Main application component
 
 **Key Responsibilities**:
@@ -493,37 +503,45 @@ Checks:
 - `reactToUrlChange()` - Parse URL and set selected station
 - `doRefresh()` - Trigger API fetch and set next refresh time
 
-### src/lib/departures.ts (113 lines)
+### src/lib/departures.ts
 **Purpose**: Data fetching and type definitions
 
 **Exports**:
 - `interface Journey` - Single train journey data
 - `interface Departures` - API response structure
-- `departures` writable store
-- `lastError` writable store
+- `interface PlatformValidation` - Result of a platform confidence check
+- `departures`, `departuresByPlatform`, `lastError` writable stores
 - `fetchDepartures(destination: string)` - Async fetch function
+- `validatePlatform(journey, departuresByPlatform)` - Flags an unconfirmed platform that
+  another service is due to use within 10 minutes
+- `lastCatchableTrainUid(journeys)` - The row that earns the "Last train" badge: the last
+  one that is a train and is not cancelled
+- `pinnedRows(journeys, lastTrainUid, shownCount)` - Which rows stay visible below the
+  "..." when the list is collapsed
 
 **Key Logic**:
-- Fetches from `https://api.euston.wtf/journeys/EUS/{destination}`
-- Filters out past trains based on current time
+- Fetches `/journeys/EUS/{destination}` and `/departures/EUS` from `api.euston.wtf` in
+  parallel - the second supplies the per-platform data `validatePlatform` needs
+- Drops only services the API reports as departed
 - Sets stores on success/failure
 - Console logs for debugging
 
-### src/lib/stations.ts (67 lines)
+### src/lib/stations.ts
 **Purpose**: Static station data
 
 **Exports**:
 - `interface Station` - Station object shape
-- `stations: Station[]` - Array of 57 UK stations
+- `stations: Station[]` - Array of 59 UK stations
 
 **Note**: All stations are destinations reachable from London Euston
 
-### src/lib/JourneyPane.svelte (104 lines)
+### src/lib/JourneyPane.svelte
 **Purpose**: Display single train journey
 
 **Props**:
 - `journey: Journey` - Journey data to display
-- `isLastTrain: boolean = false` - Whether this is the last train (special styling)
+- `isLastTrain: boolean = false` - Whether this is the last train that can still be caught,
+  which is not necessarily the last row - see `lastCatchableTrainUid`
 
 **Display Logic**:
 - 3-column grid: [Platform] [Times] [Status]
@@ -535,7 +553,7 @@ Checks:
 
 **Styling**: Uses Bulma classes extensively
 
-### src/lib/Title.svelte (52 lines)
+### src/lib/Title.svelte
 **Purpose**: Animated header
 
 **Features**:
@@ -644,7 +662,10 @@ A: Create a new service module like `departures.ts` with types, stores, and fetc
 A: No. This project uses Svelte 5. Always use `$props()`, signals-based reactivity, and Svelte 5 patterns.
 
 ### Q: Why is time comparison done with strings?
-A: HH:MM format allows string comparison to work correctly. Combined with runDate check, it handles midnight crossover. Changing this would require careful testing.
+A: Only in `validatePlatform` now, where HH:MM string comparison finds the next departure
+from the same platform. It does **not** survive midnight - see Time Comparison Edge Cases.
+The clock-based display filter that used to rely on it was removed; the API decides what has
+departed.
 
 ---
 
