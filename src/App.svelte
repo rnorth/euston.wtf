@@ -1,7 +1,7 @@
 <script lang="ts">
     import AutoComplete from "simple-svelte-autocomplete";
     import {slide} from "svelte/transition";
-    import {departures, lastError, fetchDepartures} from "./lib/departures";
+    import {departures, lastError, fetchDepartures, lastCatchableTrainUid, pinnedRows} from "./lib/departures";
     import {fetchHistory} from "./lib/history";
     import JourneyPane from "./lib/JourneyPane.svelte";
     import Title from "./lib/Title.svelte";
@@ -19,6 +19,12 @@
     let isNavigatingFromUrl = false;
 
     const currentYear = new Date().getFullYear();
+
+    // Which row wears the "Last train" badge. Recomputed on every refresh, because a
+    // cancellation can move it earlier in the list.
+    $: lastTrainUid = $departures ? lastCatchableTrainUid($departures.journeys) : null;
+    $: pinnedJourneys = $departures ? pinnedRows($departures.journeys, lastTrainUid, 5) : [];
+    $: finalJourney = $departures ? $departures.journeys[$departures.journeys.length - 1] : null;
 
     function reactToUrlChange() {
         isNavigatingFromUrl = true;
@@ -136,32 +142,35 @@
                     {#if $departures.journeys.length > 5 && hideLaterJourneys}
                         {#each $departures.journeys.slice(0, 5) as journey (journey.serviceUid)}
                             <div out:slide={{duration: 500}}>
-                                <JourneyPane {journey} />
+                                <JourneyPane {journey} isLastTrain={journey.serviceUid === lastTrainUid} />
                             </div>
                         {/each}
-                        <!-- if more than five journeys, hide later journeys but display the final item -->
+                        <!-- if more than five journeys, hide the middle but keep the rows
+                             that answer "how do I get home?" - see pinnedRows -->
                         <div class="has-text-centered">
                             <button class="button is-centered ellipsis" title="Show more"
                                     on:click={() => hideLaterJourneys=false}>...
                             </button>
                         </div>
-                        <JourneyPane
-                                journey={$departures.journeys[$departures.journeys.length - 1]}
-                                isLastTrain={true}
-                        />
+                        {#each pinnedJourneys as journey (journey.serviceUid)}
+                            <JourneyPane {journey} isLastTrain={journey.serviceUid === lastTrainUid} />
+                        {/each}
                     {:else}
                         <!-- five or fewer journeys, or if the user has chosen to show all -->
                         {#each $departures.journeys.slice(0, -1) as journey, i (journey.serviceUid)}
                             <div out:slide={{duration: 500}}>
                                 <JourneyPane
                                         {journey}
+                                        isLastTrain={journey.serviceUid === lastTrainUid}
                                 />
                             </div>
                         {/each}
-                        <JourneyPane
-                                journey={$departures.journeys[$departures.journeys.length - 1]}
-                                isLastTrain={true}
-                        />
+                        {#if finalJourney}
+                            <JourneyPane
+                                    journey={finalJourney}
+                                    isLastTrain={finalJourney.serviceUid === lastTrainUid}
+                            />
+                        {/if}
                     {/if}
                 </div>
             </section>
