@@ -186,3 +186,39 @@ export function validatePlatform(
         conflictingDeparture: nextDeparture
     };
 }
+
+// The badge people actually look for is "can I still get a train home?", so it belongs on
+// the last train they could board - not simply the last row. Two things disqualify a row:
+// a replacement bus is not a train, and a cancelled service is not catchable. Both turn up
+// at the end of the night, which is exactly where the badge lands.
+//
+// Returns the serviceUid rather than an index because the board renders its final row
+// separately from the loop, so there is no single index to compare against.
+export function lastCatchableTrainUid(journeys: Journey[]): string | null {
+    for (let i = journeys.length - 1; i >= 0; i--) {
+        const journey = journeys[i];
+        if (journey.serviceType === "train" && !journey.isCancelled) {
+            return journey.serviceUid;
+        }
+    }
+    return null;
+}
+
+// The rows kept below the "..." when the list is collapsed: the last train home, and the
+// genuinely final departure when that is something else - a replacement bus, or a cancelled
+// service. Pinning the first of these is what stops the "Last train" badge sitting in the
+// hidden middle of the list on precisely the nights it earns its keep.
+export function pinnedRows(journeys: Journey[], lastTrainUid: string | null, shownCount: number): Journey[] {
+    const alreadyShown = journeys.slice(0, shownCount);
+    const lastTrain = journeys.find((journey) => journey.serviceUid === lastTrainUid);
+    const finalDeparture = journeys[journeys.length - 1];
+
+    const pinned: Journey[] = [];
+    // In list order: the last train can only be at or before the final departure.
+    for (const journey of [lastTrain, finalDeparture]) {
+        if (journey && !alreadyShown.includes(journey) && !pinned.includes(journey)) {
+            pinned.push(journey);
+        }
+    }
+    return pinned;
+}

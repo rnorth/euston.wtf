@@ -74,7 +74,10 @@
         </div>
 
         <div>
-            {#if !journey.isCancelled}
+            <!-- A replacement bus has no platform, and a train that has not been given one
+                 yet reports an empty string - either way, claiming "Platform" with nothing
+                 after it is worse than saying nothing at all. -->
+            {#if !journey.isCancelled && journey.serviceType === "train" && journey.platform}
 
                 {#if journey.isPlatformConfirmed}
                     <p class="platform confirmed">Platform {journey.platform}</p>
@@ -88,7 +91,7 @@
 
         <div>
             {#if isLastTrain}
-                <span class="tag is-info">Last train!</span>
+                <span class="tag is-info">Last train</span>
             {/if}
 
             {#if journey.isPlatformChanged}
@@ -106,7 +109,11 @@
                 <span class="tag is-warning">Delayed</span>
             {/if}
 
-            {#if journey.serviceType !== "train"}
+            {#if journey.serviceType === "bus"}
+                <!-- Named rather than just "Bus": at 02:00 the useful fact is that this is
+                     standing in for a train, not that a bus happens to exist. -->
+                <span class="tag is-danger">Replacement bus</span>
+            {:else if journey.serviceType !== "train"}
                 <span class="tag is-danger">{titlecase(journey.serviceType)}</span>
             {/if}
 
