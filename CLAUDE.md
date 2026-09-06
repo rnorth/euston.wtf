@@ -104,6 +104,8 @@ npm run dev      # Start dev server (http://localhost:5173)
 npm run build    # Build for production (outputs to dist/)
 npm run preview  # Preview production build locally
 npm run check    # Type check with svelte-check and tsc
+npm test         # Run the unit tests once (Vitest)
+npx vitest       # Run the unit tests in watch mode
 ```
 
 ### Making Changes
@@ -404,6 +406,27 @@ Always wrap fetch calls in try-catch:
 **Key File**: departures.ts:104-110
 
 ## Testing Considerations
+
+### Unit Tests
+
+```bash
+npm test  # Vitest, well under a second, no network and no DOM
+```
+
+`src/lib/departures.spec.ts` covers the pure functions in `departures.ts` -
+`lastCatchableTrainUid`, `pinnedRows` and `validatePlatform`. Run it before committing,
+alongside `npm run check`.
+
+The suite is also where the awkward corners of `validatePlatform` are written down, because
+they are easier to state as a test than as prose: the 10-minute threshold is exclusive, the
+`/departures/EUS` feed lists a service under its own platform (so the same-service check
+often short-circuits before a genuine conflict is found), and a service with no estimate yet
+carries an empty `departureTime` that never sorts into the search window. Those last two are
+pinned as current behaviour, not endorsed as correct.
+
+New pure logic should arrive with tests. Anything that needs the DOM, a network call or a
+mounted component is still covered by the manual checklist below - there is no component
+test setup, deliberately.
 
 ### Manual Testing Checklist
 
