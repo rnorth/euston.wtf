@@ -15,4 +15,5 @@ npm install
 npm run dev      # http://localhost:5173
 npm run build    # production build → dist/
 npm run check    # type-check (svelte-check + tsc)
+npm test         # unit tests (Vitest)
 ```
