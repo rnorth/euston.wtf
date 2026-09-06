@@ -415,7 +415,8 @@ npm test  # Vitest, well under a second, no network and no DOM
 
 `src/lib/departures.spec.ts` covers the pure functions in `departures.ts` -
 `lastCatchableTrainUid`, `pinnedRows` and `validatePlatform`. Run it before committing,
-alongside `npm run check`.
+alongside `npm run check`; `.github/workflows/ci.yml` runs both on every pull request, on
+the Node version pinned in `.tool-versions`.
 
 The suite is also where the awkward corners of `validatePlatform` are written down, because
 they are easier to state as a test than as prose: the 10-minute threshold is exclusive, the
