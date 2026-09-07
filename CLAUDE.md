@@ -418,8 +418,8 @@ npm test  # Vitest, well under a second, no network and no DOM
 
 `src/lib/departures.spec.ts` covers the pure functions in `departures.ts` -
 `lastCatchableTrainUid`, `pinnedRows` and `validatePlatform`. `src/lib/history.spec.ts`
-covers `runsObserved` and `cancellationSummary` in `history.ts`, including the band
-boundaries. Run them before committing, alongside `npm run check`;
+covers `runsObserved`, `delaySummary` and `cancellationSummary` in `history.ts`,
+including the band boundaries and both suppression floors. Run them before committing, alongside `npm run check`;
 `.github/workflows/ci.yml` runs both on every pull request, on the Node version pinned in
 `.tool-versions`.
 
@@ -551,14 +551,21 @@ Checks:
 - `minObservations` writable store - display threshold, tweakable from the dev console
 - `fetchHistory(origin: string)` - Async fetch, memoised for the page's lifetime
 - `runsObserved(history)` - Departures **plus** cancellations
-- `delaySummary(history)` / `cancellationSummary(history)` - Hint-line fragments
+- `delaySummary(history)` / `cancellationSummary(history)` - Hint-line fragments, each
+  `string | null` and each lowercase (either may open the line, so neither can assume it)
 
 **Key Logic**:
 - Fetches `https://api.euston.wtf/history/{origin}?days=90` once per page load; history is
   per origin, so one response serves every destination page
 - A fetch failure is swallowed to the console - history is optional colour, never an error
-- `cancellationSummary` returns `null` below two cancellations, and bands the rest as
-  occasionally / sometimes / often
+- `cancellationSummary` returns `null` below two cancellations *or* below a 10%
+  cancellation rate, and bands the rest as occasionally (10%) / sometimes (20%) /
+  often (35%)
+- `delaySummary` returns `null` under three minutes, punctual and early services
+  included - a minute or two is inside the noise of walking to the platform, and it
+  would otherwise be the commonest hint on the board. It says "averages", not "usually",
+  because `meanDelayMinutes` is a mean and cannot vouch for a typical evening; the
+  three-minute floor also means the plural is always correct
 
 **Gotcha**: `departuresObserved` counts only the days a service actually ran, so
 cancellations are *absent* from it. Use `runsObserved()` for any rate or sample size.
@@ -583,8 +590,10 @@ cancellations are *absent* from it. Use `runsObserved()` for any rate or sample 
 - 3-column grid: [Platform] [Times] [Status]
 - Bold platform if confirmed, normal if scheduled
 - Historical hint line under the time, once the service clears `minObservations` runs -
-  e.g. `Usually ~3 min late · usually platform 12 · often cancelled (4 of 11)`. The prose
-  lives in `history.ts`; this component only joins the fragments with `·`
+  e.g. `Averages ~3 mins late · usually platform 12 · often cancelled (4 of 11)`. The prose
+  lives in `history.ts` and every fragment is optional, so the component builds the line
+  from whichever survive: it drops the nulls, joins with ` · `, and titlecases the one
+  that ends up first. A service with nothing notable about it shows no line at all
 - Service location indicator (at platform, approaching, departing)
 - Cancelled status (red banner, strikethrough times)
 - Delayed status (blue tag, strikethrough scheduled time)
