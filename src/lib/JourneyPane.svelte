@@ -1,7 +1,7 @@
 <script lang="ts">
     import { slide } from "svelte/transition";
     import { departuresByPlatform, validatePlatform, type Journey } from "./departures";
-    import { historyByService, minObservations } from "./history";
+    import { cancellationSummary, delaySummary, historyByService, minObservations, runsObserved } from "./history";
 
     interface Props {
         journey: Journey;
@@ -21,20 +21,17 @@
     // Historical performance for this service, keyed by the same serviceUid the
     // board loops on. Services are re-identified at the May/December timetable
     // recast, so a fresh UID simply has no history yet and nothing is shown.
-    let history = $derived($historyByService?.get(journey.serviceUid) ?? null);
-
-    let showHistory = $derived(
-        history !== null && history.departuresObserved >= $minObservations
-    );
-
-    // A sub-minute early average is a single train pulling out a minute early, not
-    // a pattern - and for a passenger it reads as on time anyway.
-    let delaySummary = $derived.by(() => {
-        if (history === null) return "";
-        const mean = Math.round(history.meanDelayMinutes);
-        if (mean >= 1) return `Usually ~${mean} min late`;
-        return "Usually on time";
+    //
+    // Null also covers "not enough history to be worth showing". Counting runs rather
+    // than departures matters here: gating on departures alone hid exactly the services
+    // worth warning about, because their cancellations shrank their own sample.
+    let history = $derived.by(() => {
+        const found = $historyByService?.get(journey.serviceUid) ?? null;
+        if (found === null || runsObserved(found) < $minObservations) return null;
+        return found;
     });
+
+    let cancellationHint = $derived(history === null ? null : cancellationSummary(history));
 
     function rowClass() {
         if (journey.isCancelled) return "is-danger";
@@ -59,15 +56,15 @@
                 {journey.departureTime}
             {/if}
 
-            {#if showHistory && history}
+            {#if history}
                 <p class="history"
-                   title="Based on {history.departuresObserved} observed departures in the last 90 days">
-                    {delaySummary}
+                   title="Based on {runsObserved(history)} observed runs in the last 90 days">
+                    {delaySummary(history)}
                     {#if history.usualPlatform && history.usualPlatform !== history.plannedPlatform}
                         · usually platform {history.usualPlatform}
                     {/if}
-                    {#if history.cancellations > 0}
-                        · cancelled {history.cancellations}×
+                    {#if cancellationHint}
+                        · {cancellationHint}
                     {/if}
                 </p>
             {/if}

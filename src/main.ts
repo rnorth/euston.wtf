@@ -9,7 +9,7 @@ const app = mount(App, {
 
 // Dev console hook for experimenting with the history display, e.g.:
 //   __euston.minObservations      - read the current minimum-observations threshold
-//   __euston.minObservations = 1  - show history from just one observed departure
+//   __euston.minObservations = 1  - show history from just one observed run
 //   __euston.minObservations = 7  - back to the default
 window.__euston = {
     get minObservations() {
