@@ -73,28 +73,43 @@ export function runsObserved(history: ServiceHistory): number {
     return history.departuresObserved + history.cancellations;
 }
 
-// The two functions below both render fragments of one hint line, joined by "·" in
-// JourneyPane: "Usually ~3 min late · usually platform 12 · often cancelled (4 of 11)".
-// Only the first is ever the opening fragment, so it alone is capitalised.
+// The two functions below both render fragments of one hint line, joined by " · " in
+// JourneyPane: "averages ~3 mins late · usually platform 12 · often cancelled (4 of 11)".
+// Either can come back null, so neither knows whether it opens the line - all fragments
+// are lowercase, and JourneyPane capitalises whichever survives to go first.
 
-// A sub-minute early average is a single train pulling out a minute early, not a
-// pattern - and for a passenger it reads as on time anyway.
-export function delaySummary(history: ServiceHistory): string {
+// Under three minutes we say nothing. A minute or two is inside the noise of walking to
+// the platform, so naming it implies a fault where a passenger would perceive none - and
+// it would otherwise be the commonest hint on the board, drowning out the real ones.
+// The threshold doubles as a grammar guarantee: nothing below "~3 mins" is ever rendered,
+// so the plural is always right and the fragment needs no singular case.
+const notablyLateFrom = 3;
+
+// "Averages" rather than "usually", because a mean is what we have: three minutes here
+// may be nine calm days and one half-hour catastrophe, and "usually" would promise a
+// typical evening that the figure cannot vouch for. The other fragments are genuine
+// "usually" claims - a modal platform, a rate band - so the mismatch is deliberate.
+export function delaySummary(history: ServiceHistory): string | null {
     const mean = Math.round(history.meanDelayMinutes);
-    return mean >= 1 ? `Usually ~${mean} min late` : "Usually on time";
+    return mean >= notablyLateFrom ? `averages ~${mean} mins late` : null;
 }
 
 // Bands for the share of runs that were cancelled. Words rather than a percentage
 // because at these sample sizes one bad evening moves the figure by ten points; the
 // count comes along in brackets so "often" off three events has to show its work.
-// Both edges are inclusive: exactly a tenth of runs reads as "sometimes", exactly a
-// quarter as "often".
-const sometimesFrom = 0.1;
-const oftenFrom = 0.25;
+// Every edge is inclusive: exactly a tenth of runs reads as "occasionally", a fifth
+// as "sometimes", and 35% as "often". Below a tenth we say nothing at all - that is
+// a rate the average passenger will never notice, and naming it only alarms.
+const occasionallyFrom = 0.1;
+const sometimesFrom = 0.2;
+const oftenFrom = 0.35;
 
 // Two cancellations before we say anything at all. Across the whole board most
 // cancelled services have exactly one to their name in ninety days, which is weather
 // rather than character, and reads far more alarmingly than it deserves to.
+// This floor and the rate floor above are independent, and neither subsumes the other:
+// one cancellation in eight runs clears 10% but not this, and a dozen in two hundred
+// clears this but not 10%. Both have to pass.
 const minCancellations = 2;
 
 export function cancellationSummary(history: ServiceHistory): string | null {
@@ -102,6 +117,8 @@ export function cancellationSummary(history: ServiceHistory): string | null {
     if (runs === 0 || history.cancellations < minCancellations) return null;
 
     const rate = history.cancellations / runs;
+    if (rate < occasionallyFrom) return null;
+
     const band =
         rate >= oftenFrom ? "often"
         : rate >= sometimesFrom ? "sometimes"

@@ -31,7 +31,20 @@
         return found;
     });
 
-    let cancellationHint = $derived(history === null ? null : cancellationSummary(history));
+    // Every fragment is optional now, so the line is assembled rather than laid out in
+    // markup: nulls drop away, whatever is left is joined, and only the survivor that
+    // ends up first is capitalised. An entirely unremarkable service says nothing.
+    let hints = $derived.by(() => {
+        if (history === null) return [];
+
+        const usualPlatform =
+            history.usualPlatform && history.usualPlatform !== history.plannedPlatform
+                ? `usually platform ${history.usualPlatform}`
+                : null;
+
+        return [delaySummary(history), usualPlatform, cancellationSummary(history)]
+            .filter((hint): hint is string => hint !== null);
+    });
 
     function rowClass() {
         if (journey.isCancelled) return "is-danger";
@@ -56,16 +69,10 @@
                 {journey.departureTime}
             {/if}
 
-            {#if history}
+            {#if history && hints.length > 0}
                 <p class="history"
                    title="Based on {runsObserved(history)} observed runs in the last 90 days">
-                    {delaySummary(history)}
-                    {#if history.usualPlatform && history.usualPlatform !== history.plannedPlatform}
-                        · usually platform {history.usualPlatform}
-                    {/if}
-                    {#if cancellationHint}
-                        · {cancellationHint}
-                    {/if}
+                    {titlecase(hints.join(" · "))}
                 </p>
             {/if}
         </div>
