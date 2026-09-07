@@ -414,9 +414,15 @@ npm test  # Vitest, well under a second, no network and no DOM
 ```
 
 `src/lib/departures.spec.ts` covers the pure functions in `departures.ts` -
-`lastCatchableTrainUid`, `pinnedRows` and `validatePlatform`. Run it before committing,
-alongside `npm run check`; `.github/workflows/ci.yml` runs both on every pull request, on
-the Node version pinned in `.tool-versions`.
+`lastCatchableTrainUid`, `pinnedRows` and `validatePlatform`. `src/lib/history.spec.ts`
+covers `runsObserved` and `cancellationSummary` in `history.ts`, including the band
+boundaries. Run them before committing, alongside `npm run check`;
+`.github/workflows/ci.yml` runs both on every pull request, on the Node version pinned in
+`.tool-versions`.
+
+The history counters have one trap worth remembering: `departuresObserved` counts only the
+days a service actually ran, so cancellations are *absent* from it. Anything that needs a
+sample size or a rate must use `runsObserved()`, which adds them back.
 
 The suite is also where the awkward corners of `validatePlatform` are written down, because
 they are easier to state as a test than as prose: the 10-minute threshold is exclusive, the
@@ -533,6 +539,27 @@ Checks:
 - Sets stores on success/failure
 - Console logs for debugging
 
+### src/lib/history.ts
+**Purpose**: Per-service historical performance, and the hint text derived from it
+
+**Exports**:
+- `interface ServiceHistory` - 90-day aggregates for one service
+- `historyByService` writable store - keyed by `serviceUid`
+- `minObservations` writable store - display threshold, tweakable from the dev console
+- `fetchHistory(origin: string)` - Async fetch, memoised for the page's lifetime
+- `runsObserved(history)` - Departures **plus** cancellations
+- `delaySummary(history)` / `cancellationSummary(history)` - Hint-line fragments
+
+**Key Logic**:
+- Fetches `https://api.euston.wtf/history/{origin}?days=90` once per page load; history is
+  per origin, so one response serves every destination page
+- A fetch failure is swallowed to the console - history is optional colour, never an error
+- `cancellationSummary` returns `null` below two cancellations, and bands the rest as
+  occasionally / sometimes / often
+
+**Gotcha**: `departuresObserved` counts only the days a service actually ran, so
+cancellations are *absent* from it. Use `runsObserved()` for any rate or sample size.
+
 ### src/lib/stations.ts (67 lines)
 **Purpose**: Static station data
 
@@ -552,6 +579,9 @@ Checks:
 **Display Logic**:
 - 3-column grid: [Platform] [Times] [Status]
 - Bold platform if confirmed, normal if scheduled
+- Historical hint line under the time, once the service clears `minObservations` runs -
+  e.g. `Usually ~3 min late · usually platform 12 · often cancelled (4 of 11)`. The prose
+  lives in `history.ts`; this component only joins the fragments with `·`
 - Service location indicator (at platform, approaching, departing)
 - Cancelled status (red banner, strikethrough times)
 - Delayed status (blue tag, strikethrough scheduled time)
