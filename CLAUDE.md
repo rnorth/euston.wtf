@@ -28,15 +28,18 @@ This document provides comprehensive guidance for AI assistants working with the
 ```
 /home/user/euston.wtf/
 ├── src/
-│   ├── App.svelte              # Main application component (206 lines)
+│   ├── App.svelte              # Main application component
 │   ├── main.ts                 # Application entry point
 │   ├── app.css                 # Global styles
 │   ├── vite-env.d.ts          # Vite type definitions
 │   └── lib/
-│       ├── departures.ts       # Data fetching and type definitions (113 lines)
-│       ├── stations.ts         # Static station data (67 lines, 57 stations)
-│       ├── JourneyPane.svelte  # Single journey display component (104 lines)
-│       ├── Title.svelte        # Animated header component (52 lines)
+│       ├── departures.ts       # Departure fetching, types and pure helpers
+│       ├── departures.spec.ts  # Vitest cover for the departures.ts helpers
+│       ├── history.ts          # Historical performance fetching, types and hint text
+│       ├── history.spec.ts     # Vitest cover for the history.ts helpers
+│       ├── stations.ts         # Static station data (57 stations)
+│       ├── JourneyPane.svelte  # Single journey display component
+│       ├── Title.svelte        # Animated header component
 │       └── simple-svelte-autocomplete.d.ts  # Type definitions
 ├── public/                     # Static assets (favicons, manifest)
 ├── index.html                  # HTML entry point
@@ -502,7 +505,7 @@ Checks:
 
 ## File-by-File Reference
 
-### src/App.svelte (206 lines)
+### src/App.svelte
 **Purpose**: Main application component
 
 **Key Responsibilities**:
@@ -523,7 +526,7 @@ Checks:
 - `reactToUrlChange()` - Parse URL and set selected station
 - `doRefresh()` - Trigger API fetch and set next refresh time
 
-### src/lib/departures.ts (113 lines)
+### src/lib/departures.ts
 **Purpose**: Data fetching and type definitions
 
 **Exports**:
@@ -560,7 +563,7 @@ Checks:
 **Gotcha**: `departuresObserved` counts only the days a service actually ran, so
 cancellations are *absent* from it. Use `runsObserved()` for any rate or sample size.
 
-### src/lib/stations.ts (67 lines)
+### src/lib/stations.ts (57 stations)
 **Purpose**: Static station data
 
 **Exports**:
@@ -569,7 +572,7 @@ cancellations are *absent* from it. Use `runsObserved()` for any rate or sample 
 
 **Note**: All stations are destinations reachable from London Euston
 
-### src/lib/JourneyPane.svelte (104 lines)
+### src/lib/JourneyPane.svelte
 **Purpose**: Display single train journey
 
 **Props**:
@@ -589,7 +592,7 @@ cancellations are *absent* from it. Use `runsObserved()` for any rate or sample 
 
 **Styling**: Uses Bulma classes extensively
 
-### src/lib/Title.svelte (52 lines)
+### src/lib/Title.svelte
 **Purpose**: Animated header
 
 **Features**:
@@ -718,4 +721,5 @@ When working with this code:
 4. **Test thoroughly**
 5. **Keep changes minimal and focused**
 
-For questions or clarifications, refer to the code itself - it's well-structured and relatively small (~500 lines total).
+For questions or clarifications, refer to the code itself - it's well-structured and small
+enough to read end to end in one sitting.
