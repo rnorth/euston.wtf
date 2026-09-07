@@ -68,13 +68,6 @@
             {:else}
                 {journey.departureTime}
             {/if}
-
-            {#if history && hints.length > 0}
-                <p class="history"
-                   title="Based on {runsObserved(history)} observed runs in the last 90 days">
-                    {titlecase(hints.join(" · "))}
-                </p>
-            {/if}
         </div>
 
         <div>
@@ -157,6 +150,16 @@
                 {/if}
             {/if}
         </div>
+
+        <!-- Last in the DOM but a row of its own, spanning all three columns: the hint
+             describes the service rather than the time, and at ~45 characters it wrapped
+             three times in the column the time lives in. -->
+        {#if history && hints.length > 0}
+            <p class="history"
+               title="Based on {runsObserved(history)} observed runs in the last 90 days">
+                {titlecase(hints.join(" · "))}
+            </p>
+        {/if}
     </div>
 </article>
 
@@ -189,7 +192,8 @@
     }
 
     .history {
-        margin: 0.25rem 0 0;
+        grid-column: 1 / -1;
+        margin: 0;
         font-size: 0.8rem;
         color: gray;
     }
